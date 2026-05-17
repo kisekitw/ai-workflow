@@ -442,21 +442,23 @@ const phases = [
   {
     num: 'Phase 0', title: 'Codebase 考古', badge: '讓程式碼自己說話',
     left: [
+      '【設計原則】PowerShell 做重活，AI 分批讀取結果，不用 Sub-agent',
       '【邊界規則】只處理 .csproj，跳過 .vcxproj（C++）',
       '【邊界規則】*Ex.csproj 跳過內部分析，保留被依賴關係',
-      '【Layer 1】<ProjectReference> 建依賴拓樸：找樞紐模組與孤島模組',
-      '【Layer 1】git log 穩定度分析（參考用，非死碼訊號）',
-      '【Layer 1】grep/PowerShell 掃 private/internal 死碼候選',
+      '【Layer 1 S1】PowerShell 掃 ProjectReference → dependency-map.json',
+      '【Layer 1 S2】git log 穩定度 → git-stability.csv（參考用，非死碼訊號）',
+      '【Layer 1 S3】grep 掃 private/internal → dead-candidates.csv（分批讀 TOP 50）',
     ],
     right: [
-      '【Layer 2】針對 Layer 1 選出的優先模組，列出 public API 清單',
-      '【Layer 2】交叉搜尋 solution 內哪些 project 呼叫這些 API',
-      '【平行任務 A】產出掃描 cb8/cb9/ure 三個 repo 的任務說明',
-      '【平行任務 B】產出 Runtime Telemetry 佈建指引（收集 3–6 個月）',
-      '⚠ public API 無法標記死碼，需等平行任務完成後才能確認',
+      '【Layer 1】AI 分批讀取三份中間檔 → 產出 00-global-map.html',
+      '【Layer 2】針對選定模組，PowerShell 掃 public API → [Module]-usage.csv',
+      '【Layer 2】AI 讀取 usage.csv → 產出 [ModuleName]-report.html',
+      '【平行任務 A】掃描 cb8/cb9/ure 三個 repo 找 dll 引用',
+      '【平行任務 B】Runtime Telemetry 佈建（收集 3–6 個月）',
+      '⚠ public API 死碼需等平行任務完成後才能確認，靜態分析不夠',
     ],
-    codeLabel: '前置確認指令（執行前必跑）',
-    code: '# 確認 git 存在\ngit log --oneline -5\n\n# 確認 C# project 數量（排除 Ex 結尾）\n$projs = Get-ChildItem -Recurse -Filter "*.csproj" |\n  Where-Object { $_.Name -notmatch "Ex\\.csproj$" }\nWrite-Host "找到 $($projs.Count) 個 C# project"'
+    codeLabel: '中間檔輸出路徑',
+    code: 'docs/archaeology/tmp/\n├── dependency-map.json   ← Layer 1 S1\n├── git-stability.csv     ← Layer 1 S2\n└── dead-candidates.csv   ← Layer 1 S3\n\ndocs/archaeology/\n├── 00-global-map.html    ← Layer 1 最終報告\n├── [Module]-report.html  ← Layer 2 最終報告\n└── parallel-tasks.md     ← 平行任務說明'
   },
   {
     num: 'Phase 1', title: 'AI 基礎建設', badge: 'Copilot 記憶錨點',
