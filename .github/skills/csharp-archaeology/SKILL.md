@@ -306,15 +306,29 @@ Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候�
 
 ### Layer 1 最終輸出
 
-產出 `docs/archaeology/00-global-map.html`（infographic report）：
+讀取 `.github/skills/csharp-archaeology/templates/layer1-global-map-template.html`，
+依下表填入 placeholder，寫出至 `docs/archaeology/00-global-map.html`。
 
-- KPI strip：分析 project 數 / 孤島數 / 兩年未動數 / 死碼候選數
-- 樞紐模組 bar chart（Top 15，含風險標籤）
-- 孤島模組卡片（含最後異動日期）
-- Git 穩定度表格（ACTIVE / STALE / FROZEN badge）
-- 死碼候選表格（信心度 HIGH / MED / LOW）
-- 行動建議優先序（Layer 2 / 待刪 / 監控）
-- 警告框：public API 死碼需等平行任務完成後才能確認
+**純量 placeholder：**
+
+| Token | 值 |
+|-------|---|
+| `{{DATE}}` | 執行當天日期（YYYY-MM-DD） |
+| `{{SOLUTION_NAME}}` | 找到的 .sln 檔名（不含路徑） |
+| `{{PROJECT_COUNT}}` | 分析 project 總數 |
+| `{{ISLAND_COUNT}}` | 孤島模組數（dependency-map.json） |
+| `{{STALE_COUNT}}` | FROZEN + STALE 模組數（git-stability.csv） |
+| `{{DEAD_COUNT}}` | dead-candidates.csv 總列數 |
+
+**資料區段 marker：** 把 marker 行替換為從 CSV/JSON 產生的 HTML 列（格式見模板內 HTML comment）。
+
+| Marker | 資料來源 |
+|--------|---------|
+| `<!-- ##HUB_ROWS## -->` | dependency-map.json .hubs Top 15 |
+| `<!-- ##ISLAND_CARDS## -->` | dependency-map.json .islands × git-stability.csv |
+| `<!-- ##GIT_ROWS## -->` | git-stability.csv 全部 |
+| `<!-- ##DEAD_ROWS## -->` | dead-candidates.csv Top 50 |
+| `<!-- ##PRIORITY_ITEMS## -->` | AI 綜合分析建議 |
 
 ---
 
@@ -432,13 +446,19 @@ Write-Host "Solution 內零呼叫：$(($usageReport | Where-Object CallerCount -
 
 ### Layer 2 最終輸出
 
-產出 `docs/archaeology/[ModuleName]-report.html`（infographic report）：
+讀取 `.github/skills/csharp-archaeology/templates/layer2-module-report-template.html`，
+填入 placeholder，寫出至 `docs/archaeology/{{MODULE_NAME}}-report.html`。
 
-- KPI strip：Public API 總數 / 有呼叫者 / 零呼叫 / 上游依賴數
-- 上下游依賴關係圖（三欄：上游 → 目標模組 → 下游）
-- Public API 表格（可展開呼叫者，零呼叫紅色標注）
-- 呼叫熱度 heatmap（下游模組使用密度）
-- 警告框：零呼叫 ≠ 死碼，需 Task A 確認
+**純量 placeholder：** `{{MODULE_NAME}}`, `{{API_COUNT}}`, `{{HAS_CALLERS}}`, `{{ZERO_CALLERS}}`, `{{UPSTREAM_COUNT}}`, `{{DOWNSTREAM_COUNT}}`, `{{DATE}}`
+
+**資料區段 marker：**
+
+| Marker | 資料來源 |
+|--------|---------|
+| `<!-- ##UPSTREAM_ITEMS## -->` | dependency-map.json（此模組的 ProjectReference） |
+| `<!-- ##DOWNSTREAM_ITEMS## -->` | dependency-map.json（誰依賴此模組） |
+| `<!-- ##API_ROWS## -->` | `{ModuleName}-usage.csv` |
+| `<!-- ##HEATMAP_CELLS## -->` | `{ModuleName}-usage.csv` 彙總至 project |
 
 ---
 

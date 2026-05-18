@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layer 2 · 模組報告 — {{MODULE_NAME}}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:        #F4F5FB;
+  --surface:   #FFFFFF;
+  --border:    #E2E5F1;
+  --text:      #1A1C2E;
+  --text2:     #5A5F80;
+  --text3:     #9DA3C0;
+  --orange:    #FF6B35;
+  --orange-bg: #FFF2EC;
+  --coral:     #F0384F;
+  --coral-bg:  #FFF0F2;
+  --green:     #10B981;
+  --green-bg:  #ECFDF5;
+  --sky:       #0EA5E9;
+  --sky-bg:    #E0F2FE;
+  --violet:    #7C3AED;
+  --violet-bg: #F5F3FF;
+  --violet-bd: rgba(124,58,237,.25);
+  --amber:     #F59E0B;
+  --amber-bg:  #FFFBEB;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --body:    'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── Top accent bar ── */
+.top-bar{height:4px;background:linear-gradient(90deg,var(--violet),#A855F7);position:sticky;top:0;z-index:50}
+
+/* ── Zoom ── */
+#zoom-root{transform-origin:top center;transition:transform .2s ease;padding:2.5rem 2rem 4rem;max-width:1100px;margin:0 auto}
+.zoom-bar{position:fixed;bottom:1.5rem;right:1.5rem;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:.4rem .65rem;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.zoom-btn{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;font-family:var(--mono);user-select:none}
+.zoom-btn:hover{background:var(--border);color:var(--text)}
+.zoom-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:center}
+.zoom-reset{font-size:10px;font-family:var(--mono);color:var(--text3);cursor:pointer;padding:0 4px}
+.zoom-reset:hover{color:var(--violet)}
+
+/* ── Header ── */
+.report-header{
+  display:grid;grid-template-columns:1fr auto;
+  gap:2rem;align-items:start;
+  margin-bottom:2.5rem;
+  padding:2rem 0 2rem;
+  border-bottom:2px solid var(--border);
+}
+.report-stamp{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  color:var(--violet);text-transform:uppercase;margin-bottom:.75rem;
+  display:flex;align-items:center;gap:8px;
+}
+.report-stamp::before{content:'';width:24px;height:2px;background:var(--violet);display:inline-block;border-radius:1px}
+h1{font-family:var(--display);font-size:44px;font-weight:800;line-height:1.05;color:var(--text);letter-spacing:-.02em}
+h1 em{color:var(--violet);font-style:normal}
+.report-sub{font-size:12px;color:var(--text3);margin-top:.75rem;line-height:1.6;font-family:var(--mono)}
+.meta-pills{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.meta-pill{font-size:11px;font-family:var(--mono);padding:5px 14px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+.meta-pill strong{color:var(--text);font-weight:600}
+
+/* ── KPI strip ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2.5rem}
+.kpi-cell{background:var(--surface);padding:1.5rem 1.75rem;border-radius:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.kpi-cell.violet{background:var(--violet-bg);border-color:rgba(124,58,237,.2)}
+.kpi-cell.green{background:var(--green-bg);border-color:rgba(16,185,129,.2)}
+.kpi-cell.coral{background:var(--coral-bg);border-color:rgba(240,56,79,.2)}
+.kpi-cell.sky{background:var(--sky-bg);border-color:rgba(14,165,233,.2)}
+.kpi-label{font-size:11px;font-family:var(--mono);letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:.6rem}
+.kpi-num{font-family:var(--display);font-size:56px;font-weight:800;line-height:1;margin-bottom:.3rem}
+.kpi-cell.violet .kpi-num{color:var(--violet)}
+.kpi-cell.green  .kpi-num{color:var(--green)}
+.kpi-cell.coral  .kpi-num{color:var(--coral)}
+.kpi-cell.sky    .kpi-num{color:var(--sky)}
+.kpi-note{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* ── Section heading ── */
+.sec-head{margin-bottom:1.25rem;margin-top:3rem;padding-bottom:.75rem;border-bottom:3px solid var(--violet);display:flex;align-items:flex-end;justify-content:space-between}
+.sec-head.amber{border-bottom-color:var(--amber)}
+.sec-head.sky{border-bottom-color:var(--sky)}
+.sec-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text)}
+.sec-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-top:.3rem}
+.sec-num{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;flex-shrink:0;margin-left:1rem}
+
+/* ── Dependency Map ── */
+.dep-map{display:grid;grid-template-columns:1fr 180px 1fr;gap:12px;align-items:start;margin-bottom:1rem}
+.dep-col{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.dep-col-header{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg)}
+.dep-col-label{font-size:10px;font-family:var(--mono);letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.3rem}
+.dep-col-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.dep-items{padding:.4rem 0}
+.dep-item{display:flex;align-items:center;gap:8px;padding:.55rem 1.25rem;border-bottom:1px solid var(--border);transition:background .12s}
+.dep-item:last-child{border-bottom:none}
+.dep-item:hover{background:var(--bg)}
+.dep-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-up{background:var(--sky)}
+.dot-down{background:var(--violet)}
+.dep-name{font-size:12px;font-family:var(--mono);color:var(--text2)}
+.dep-arrow-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding-top:3rem}
+.dep-module-card{
+  background:linear-gradient(135deg,var(--violet-bg),rgba(124,58,237,.04));
+  border:1px solid var(--violet-bd);
+  border-radius:16px;padding:1.25rem 1rem;text-align:center;width:100%;
+  box-shadow:0 4px 16px rgba(124,58,237,.1);
+}
+.dep-module-name{font-family:var(--display);font-size:15px;font-weight:800;color:var(--violet);margin-bottom:.3rem;word-break:break-all}
+.dep-module-sub{font-size:10px;font-family:var(--mono);color:var(--text3)}
+.arr{font-size:18px;color:var(--text3);font-weight:700}
+
+/* ── API Table ── */
+.api-table{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.api-header{
+  display:grid;grid-template-columns:4px 2fr 88px 1fr 64px;
+  padding:.7rem 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.api-row{
+  display:grid;grid-template-columns:4px 2fr 88px 1fr 64px;
+  padding:.8rem 1.5rem;border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;cursor:pointer;
+}
+.api-row:last-child{border-bottom:none}
+.api-row:hover{background:var(--bg)}
+.api-row.expanded{background:var(--violet-bg)}
+.api-type-bar{width:4px;height:32px;border-radius:2px;flex-shrink:0}
+.api-type-bar.type-class{background:var(--violet)}
+.api-type-bar.type-method{background:var(--sky)}
+.api-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.api-type-badge{font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:20px;display:inline-block;text-align:center;font-weight:500;white-space:nowrap}
+.type-class{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-bd)}
+.type-method{background:var(--sky-bg);color:var(--sky)}
+.api-preview{font-size:11px;color:var(--text3);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.api-count{font-size:14px;font-family:var(--display);font-weight:800;text-align:right}
+.count-zero{color:var(--coral)}
+.count-few{color:var(--amber)}
+.count-many{color:var(--green)}
+
+/* expand detail */
+.api-detail{display:none;padding:.85rem 1.5rem 1rem;border-bottom:1px solid var(--border);background:var(--violet-bg)}
+.api-detail.open{display:block}
+.detail-label{font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.6rem}
+.caller-chips{display:flex;flex-wrap:wrap;gap:6px}
+.caller-chip{font-size:11px;font-family:var(--mono);padding:4px 12px;border-radius:20px;background:var(--surface);color:var(--violet);border:1px solid var(--violet-bd)}
+.caller-chip.zero{background:var(--coral-bg);color:var(--coral);border-color:rgba(240,56,79,.2);font-style:italic}
+
+/* ── Toggle all button ── */
+#toggle-all-btn{
+  font-size:11px;font-family:var(--mono);
+  padding:5px 16px;border-radius:20px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text2);cursor:pointer;
+  transition:background .15s,color .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+#toggle-all-btn:hover{background:var(--bg);color:var(--text)}
+
+/* ── Usage heatmap ── */
+.heatmap-legend{display:flex;gap:16px;align-items:center;margin-bottom:.75rem}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono)}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.heatmap-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1rem}
+.heat-cell{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:.85rem;
+  position:relative;overflow:hidden;
+  min-height:120px;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s;
+}
+.heat-cell:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.heat-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(to top,var(--violet-bg),transparent);
+  transition:height .3s;
+}
+.heat-cell:has(.heat-high) .heat-bar{background:linear-gradient(to top,rgba(124,58,237,.18),transparent)}
+.heat-cell:has(.heat-mid)  .heat-bar{background:linear-gradient(to top,rgba(245,158,11,.15),transparent)}
+.heat-cell:has(.heat-low)  .heat-bar{background:linear-gradient(to top,rgba(14,165,233,.12),transparent)}
+.heat-name{font-size:11px;font-family:var(--mono);color:var(--text2);font-weight:500;position:relative;z-index:1;margin-bottom:.3rem;word-break:break-word}
+.heat-count{font-family:var(--display);font-size:28px;font-weight:800;position:relative;z-index:1;line-height:1}
+.heat-high{color:var(--violet)}
+.heat-mid{color:var(--amber)}
+.heat-low{color:var(--sky)}
+.heat-label{font-size:10px;color:var(--text3);position:relative;z-index:1;margin-top:.2rem}
+
+/* ── Warning box ── */
+.warn-box{background:var(--amber-bg);border:1px solid rgba(245,158,11,.3);border-radius:16px;padding:1.25rem 1.5rem;display:flex;gap:12px;align-items:flex-start;margin-top:2rem}
+.warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.warn-text{font-size:12px;color:var(--text2);line-height:1.7;font-family:var(--mono)}
+.warn-text strong{color:var(--text)}
+
+/* ── Site nav ── */
+.site-nav{display:flex;align-items:center;gap:6px;padding:.6rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:1.75rem;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.nav-crumb{font-size:11px;font-family:var(--mono);padding:4px 12px;border-radius:20px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+.nav-crumb.current{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-bd);font-weight:600;cursor:default}
+.nav-crumb.link{background:var(--bg);color:var(--text2);border:1px solid var(--border);cursor:pointer}
+.nav-crumb.link:hover{background:var(--border);color:var(--text)}
+.nav-sep{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+/* ── Footer ── */
+.report-footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.footer-left{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.footer-right{font-size:11px;font-family:var(--mono);color:var(--text3)}
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<div class="zoom-bar">
+  <div class="zoom-btn" onclick="zoom(-10)">−</div>
+  <span class="zoom-pct" id="pct">100%</span>
+  <div class="zoom-btn" onclick="zoom(+10)">+</div>
+  <span class="zoom-reset" onclick="resetZoom()">reset</span>
+</div>
+
+<div id="zoom-root">
+
+  <!-- Site nav -->
+  <nav class="site-nav" aria-label="報告導覽">
+    <a class="nav-crumb link" href="00-global-map.html">Layer 1 · 全局地圖</a>
+    <span class="nav-sep">›</span>
+    <span class="nav-crumb current">Layer 2 · {{MODULE_NAME}}</span>
+  </nav>
+
+  <!-- Header -->
+  <div class="report-header">
+    <div>
+      <div class="report-stamp">Layer 2 · Module Deep-Dive Report</div>
+      <h1><em>{{MODULE_NAME}}</em><br>模組深挖報告</h1>
+      <p class="report-sub">layer2 · Phase 0 Archaeology · 資料來源：{{MODULE_NAME}}-api.json · {{MODULE_NAME}}-usage.csv</p>
+    </div>
+    <div>
+      <div class="meta-pills">
+        <div class="meta-pill">產出日期 <strong>{{DATE}}</strong></div>
+        <div class="meta-pill">模組路徑 <strong>src/{{MODULE_NAME}}/</strong></div>
+        <div class="meta-pill">對外功能 <strong>{{API_COUNT}} 個</strong></div>
+        <div class="meta-pill">被使用次數 <strong>{{DOWNSTREAM_COUNT}} 個專案</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-strip">
+    <div class="kpi-cell violet">
+      <div class="kpi-label">對外提供的功能數</div>
+      <div class="kpi-num">{{API_COUNT}}</div>
+      <div class="kpi-note">類別 + 功能合計</div>
+    </div>
+    <div class="kpi-cell green">
+      <div class="kpi-label">有人在用的功能</div>
+      <div class="kpi-num">{{HAS_CALLERS}}</div>
+      <div class="kpi-note">至少 1 個專案使用</div>
+    </div>
+    <div class="kpi-cell coral">
+      <div class="kpi-label">目前無人使用</div>
+      <div class="kpi-num">{{ZERO_CALLERS}}</div>
+      <div class="kpi-note">需平行任務確認外部引用</div>
+    </div>
+    <div class="kpi-cell sky">
+      <div class="kpi-label">這個模組用到了幾個</div>
+      <div class="kpi-num">{{UPSTREAM_COUNT}}</div>
+      <div class="kpi-note">此模組引用的其他專案</div>
+    </div>
+  </div>
+
+  <!-- Dependency Map -->
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">上下游關係</div>
+      <div class="sec-desc">來自 Layer 1 依賴分析 — 左側：這個模組用到了哪些模組 · 右側：哪些地方在使用這個模組</div>
+    </div>
+    <span class="sec-num">01 / 03</span>
+  </div>
+  <div class="dep-map">
+    <div class="dep-col">
+      <div class="dep-col-header">
+        <div class="dep-col-label">這個模組用到了哪些模組</div>
+        <div class="dep-col-title">{{UPSTREAM_COUNT}} 個引用</div>
+      </div>
+      <div class="dep-items">
+        <!--
+          ##UPSTREAM_ITEMS## — 替換為 dependency-map.json 中此模組的 ProjectReference 清單
+          格式：
+          <div class="dep-item"><span class="dep-dot dot-up"></span><span class="dep-name">{ProjectName}</span></div>
+        -->
+        <!-- ##UPSTREAM_ITEMS## -->
+      </div>
+    </div>
+    <div class="dep-arrow-col">
+      <div class="arr">&#8594;</div>
+      <div class="dep-module-card">
+        <div class="dep-module-name">{{MODULE_NAME}}</div>
+        <div class="dep-module-sub">目標模組</div>
+      </div>
+      <div class="arr">&#8594;</div>
+    </div>
+    <div class="dep-col">
+      <div class="dep-col-header">
+        <div class="dep-col-label">哪些地方在使用這個模組</div>
+        <div class="dep-col-title">{{DOWNSTREAM_COUNT}} 個專案</div>
+      </div>
+      <div class="dep-items">
+        <!--
+          ##DOWNSTREAM_ITEMS## — 替換為 dependency-map.json 中指向此模組的 project 清單
+          若超過 10 個，列出前 9 個後加一行「⋯ 還有 N 個專案」
+          格式：
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">{ProjectName}</span></div>
+        -->
+        <!-- ##DOWNSTREAM_ITEMS## -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Warning — before API table -->
+  <div class="warn-box">
+    <span class="warn-icon">&#9888;&#65039;</span>
+    <div class="warn-text">
+      此報告中 <strong>{{ZERO_CALLERS}} 個對外功能目前在 Solution 內沒有被呼叫到</strong>（下方表格顯示 {{API_COUNT}} 筆全部）。<br>
+      這不代表它們是死碼。{{MODULE_NAME}} 是高依賴模組（{{DOWNSTREAM_COUNT}} 個下游），可能有外部 repo 透過 dll 引用。<br>
+      請執行 <strong>Task A：掃描 cb8/cb9/ure</strong> 確認後，再決定是否標記為死碼候選。
+    </div>
+  </div>
+
+  <!-- API Table -->
+  <div class="sec-head amber">
+    <div>
+      <div class="sec-title">對外提供的功能清單</div>
+      <div class="sec-desc">顯示 {{API_COUNT}} 筆全部 · 點選列展開使用者 · 目前無人使用不代表死碼（可能被外部 dll 引用）</div>
+    </div>
+    <span class="sec-num">02 / 03</span>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+    <button id="toggle-all-btn" onclick="toggleAll()">展開全部</button>
+  </div>
+  <div class="api-table">
+    <div class="api-header">
+      <span></span>
+      <span>功能名稱</span>
+      <span>類型</span>
+      <span>主要使用者</span>
+      <span>使用次數</span>
+    </div>
+    <!--
+      ##API_ROWS## — 替換為從 {MODULE_NAME}-usage.csv 產生的 api-row + api-detail 對
+      count class：CallerCount=0 → count-zero，1-5 → count-few，>5 → count-many
+      api-preview：列出前三個呼叫者（用逗號分隔），若無則填「—」
+      N 為流水號（從 1 開始），用於 toggle('apiN') 與 id="apiN"
+
+      格式（每個 API 一對 api-row + api-detail）：
+      <div class="api-row" onclick="toggle('api{N}')">
+        <span class="api-type-bar type-{class|method}"></span>
+        <span class="api-name">{API}</span>
+        <span class="api-type-badge type-{class|method}">{類別|功能}</span>
+        <span class="api-preview">{Callers 前三個，或 —}</span>
+        <span class="api-count count-{zero|few|many}">{CallerCount}</span>
+      </div>
+      <div class="api-detail" id="api{N}">
+        <div class="detail-label">使用這個功能的地方（{CallerCount} 個模組）</div>
+        <div class="caller-chips">
+          <!-- 若 CallerCount > 0：每個 caller 一個 chip -->
+          <span class="caller-chip">{CallerName}</span>
+          <!-- 若 CallerCount = 0：一個 zero chip -->
+          <span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span>
+        </div>
+      </div>
+    -->
+    <!-- ##API_ROWS## -->
+  </div>
+
+  <!-- Caller heatmap -->
+  <div class="sec-head sky">
+    <div>
+      <div class="sec-title">哪些地方用得最多</div>
+      <div class="sec-desc">同專案內的使用者 — 用越多功能代表耦合越深，重構時需優先溝通</div>
+    </div>
+    <span class="sec-num">03 / 03</span>
+  </div>
+  <div class="heatmap-legend">
+    <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">耦合程度：</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--violet)"></span><span style="color:var(--violet)">高（&ge;15 個功能）</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span><span style="color:var(--amber)">中（8–14 個功能）</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--sky)"></span><span style="color:var(--sky)">低（&lt;8 個功能）</span></span>
+  </div>
+  <div class="heatmap-grid">
+    <!--
+      ##HEATMAP_CELLS## — 替換為從 {MODULE_NAME}-usage.csv 彙總至 project 的 Top 10 格子
+      彙總邏輯：以 project 為單位統計使用的不重複 API 數
+      heat-bar height = count/max*100%
+      heat-count class：>= 15 → heat-high（紫色），8-14 → heat-mid（琥珀色），< 8 → heat-low（藍色）
+
+      格式：
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:{pct}%"></div>
+        <div class="heat-name">{ProjectName}</div>
+        <div class="heat-count heat-{high|mid|low}">{count}</div>
+        <div class="heat-label">個功能</div>
+      </div>
+    -->
+    <!-- ##HEATMAP_CELLS## -->
+  </div>
+
+  <div class="report-footer">
+    <span class="footer-left">Phase 0 · Layer 2 · {{MODULE_NAME}}-report</span>
+    <span class="footer-right">Generated by csharp-archaeology skill · VS Code Copilot Enterprise</span>
+  </div>
+
+</div><!-- /zoom-root -->
+
+<script>
+let scale = 1;
+const root = document.getElementById('zoom-root');
+const pct  = document.getElementById('pct');
+function zoom(delta){
+  scale = Math.min(1.5, Math.max(0.4, scale + delta/100));
+  root.style.transform = `scale(${scale})`;
+  pct.textContent = Math.round(scale*100)+'%';
+  document.body.style.minHeight = (root.offsetHeight * scale + 80) + 'px';
+}
+function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent='100%'; document.body.style.minHeight=''; }
+document.addEventListener('wheel', e=>{
+  if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoom(e.deltaY < 0 ? 10 : -10); }
+},{passive:false});
+
+function toggle(id){
+  const detail = document.getElementById(id);
+  const row    = detail.previousElementSibling;
+  detail.classList.toggle('open');
+  row.classList.toggle('expanded');
+}
+
+let allOpen = false;
+function toggleAll(){
+  const details = document.querySelectorAll('.api-detail');
+  const rows    = document.querySelectorAll('.api-row');
+  allOpen = !allOpen;
+  details.forEach(d => d.classList.toggle('open', allOpen));
+  rows.forEach(r => r.classList.toggle('expanded', allOpen));
+  document.getElementById('toggle-all-btn').textContent = allOpen ? '收起全部' : '展開全部';
+}
+</script>
+</body>
+</html>

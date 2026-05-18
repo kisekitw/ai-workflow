@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{SOLUTION_NAME}} — Layer 1 全局地圖</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:        #F4F5FB;
+  --surface:   #FFFFFF;
+  --border:    #E2E5F1;
+  --text:      #1A1C2E;
+  --text2:     #5A5F80;
+  --text3:     #9DA3C0;
+  --orange:    #FF6B35;
+  --orange-bg: #FFF2EC;
+  --coral:     #F0384F;
+  --coral-bg:  #FFF0F2;
+  --green:     #10B981;
+  --green-bg:  #ECFDF5;
+  --sky:       #0EA5E9;
+  --sky-bg:    #E0F2FE;
+  --violet:    #7C3AED;
+  --violet-bg: #F5F3FF;
+  --amber:     #F59E0B;
+  --amber-bg:  #FFFBEB;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --body:    'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{
+  font-family:var(--body);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── Top accent bar ── */
+.top-bar{
+  height:4px;
+  background:linear-gradient(90deg,var(--orange),#FF9500);
+  position:sticky;top:0;z-index:50;
+}
+
+/* ── Zoom wrapper ── */
+#zoom-root{
+  transform-origin:top center;
+  transition:transform .2s ease;
+  padding:2.5rem 2rem 4rem;
+  max-width:1100px;
+  margin:0 auto;
+}
+
+/* ── Zoom controls (fixed) ── */
+.zoom-bar{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:40px;padding:.4rem .65rem;
+  z-index:100;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);
+}
+.zoom-btn{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--bg);border:1px solid var(--border);
+  color:var(--text2);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+  font-family:var(--mono);user-select:none;
+}
+.zoom-btn:hover{background:var(--border);color:var(--text)}
+.zoom-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:center}
+.zoom-reset{font-size:10px;font-family:var(--mono);color:var(--text3);cursor:pointer;padding:0 4px}
+.zoom-reset:hover{color:var(--orange)}
+
+/* ── Header ── */
+.report-header{
+  display:grid;grid-template-columns:1fr auto;
+  gap:2rem;align-items:start;
+  margin-bottom:2.5rem;
+  padding:2rem 0 2rem;
+  border-bottom:2px solid var(--border);
+}
+.report-stamp{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  color:var(--orange);text-transform:uppercase;margin-bottom:.75rem;
+  display:flex;align-items:center;gap:8px;
+}
+.report-stamp::before{content:'';width:24px;height:2px;background:var(--orange);display:inline-block;border-radius:1px}
+h1{
+  font-family:var(--display);font-size:44px;font-weight:800;
+  line-height:1.05;color:var(--text);letter-spacing:-.02em;
+}
+h1 em{color:var(--orange);font-style:normal}
+.report-sub{font-size:12px;color:var(--text3);margin-top:.75rem;line-height:1.6;font-family:var(--mono)}
+.meta-pills{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.meta-pill{
+  font-size:11px;font-family:var(--mono);
+  padding:5px 14px;border-radius:20px;
+  background:var(--bg);border:1px solid var(--border);
+  color:var(--text2);white-space:nowrap;
+}
+.meta-pill strong{color:var(--text);font-weight:600}
+
+/* ── KPI strip ── */
+.kpi-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:2.5rem;
+}
+.kpi-cell{
+  background:var(--surface);
+  padding:1.5rem 1.75rem;
+  border-radius:16px;
+  border:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.kpi-cell.orange{background:var(--orange-bg);border-color:rgba(255,107,53,.2)}
+.kpi-cell.coral{background:var(--coral-bg);border-color:rgba(240,56,79,.2)}
+.kpi-cell.sky{background:var(--sky-bg);border-color:rgba(14,165,233,.2)}
+.kpi-cell.green{background:var(--green-bg);border-color:rgba(16,185,129,.2)}
+.kpi-label{font-size:11px;font-family:var(--mono);letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:.6rem}
+.kpi-num{font-family:var(--display);font-size:56px;font-weight:800;line-height:1;margin-bottom:.3rem}
+.kpi-cell.orange .kpi-num{color:var(--orange)}
+.kpi-cell.coral  .kpi-num{color:var(--coral)}
+.kpi-cell.sky    .kpi-num{color:var(--sky)}
+.kpi-cell.green  .kpi-num{color:var(--green)}
+.kpi-note{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* ── Section heading ── */
+.sec-head{
+  margin-bottom:1.25rem;margin-top:3rem;
+  padding-bottom:.75rem;
+  border-bottom:3px solid var(--orange);
+  display:flex;align-items:flex-end;justify-content:space-between;
+}
+.sec-head.coral{border-bottom-color:var(--coral)}
+.sec-head.sky{border-bottom-color:var(--sky)}
+.sec-head.violet{border-bottom-color:var(--violet)}
+.sec-head.green{border-bottom-color:var(--green)}
+.sec-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text)}
+.sec-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-top:.3rem}
+.sec-num{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;flex-shrink:0;margin-left:1rem}
+
+/* ── Hub chart ── */
+.hub-chart{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.hub-chart-header{
+  display:grid;grid-template-columns:200px 1fr 80px 96px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.hub-row{
+  display:grid;grid-template-columns:200px 1fr 80px 96px;
+  padding:.9rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.hub-row:last-child{border-bottom:none}
+.hub-row:hover{background:var(--bg)}
+.hub-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.hub-bar-track{height:14px;background:var(--bg);border-radius:7px;overflow:hidden;border:1px solid var(--border)}
+.hub-bar{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--orange),#FF9500)}
+.hub-count{font-size:13px;font-family:var(--mono);color:var(--orange);text-align:right;font-weight:600}
+.hub-risk{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;font-weight:500;white-space:nowrap}
+.risk-h{background:var(--coral-bg);color:var(--coral)}
+.risk-m{background:var(--amber-bg);color:var(--amber)}
+.risk-l{background:var(--green-bg);color:var(--green)}
+
+/* ── Island modules ── */
+.island-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;margin-bottom:1rem;
+}
+.island-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:1.75rem 1.25rem 1.5rem;
+  text-align:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s;
+}
+.island-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.island-years{
+  font-family:var(--display);font-size:52px;font-weight:800;
+  color:var(--coral);line-height:1;margin-bottom:.25rem;
+}
+.island-years span{font-size:22px;color:var(--text3);font-weight:700}
+.island-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.4rem;word-break:break-word}
+.island-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+/* ── Git stability ── */
+.git-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.git-header{
+  display:grid;grid-template-columns:200px 1fr 80px 110px 90px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.git-row{
+  display:grid;grid-template-columns:200px 1fr 80px 110px 90px;
+  padding:.9rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.git-row:last-child{border-bottom:none}
+.git-row:hover{background:var(--bg)}
+.git-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.git-bar-track{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.git-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--sky),#38BDF8)}
+.git-num{font-size:12px;font-family:var(--mono);color:var(--sky);text-align:right;font-weight:600}
+.git-date{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.git-status{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
+.s-active{background:var(--green-bg);color:var(--green)}
+.s-stale{background:var(--amber-bg);color:var(--amber)}
+.s-frozen{background:var(--sky-bg);color:var(--sky)}
+
+/* ── Dead candidates ── */
+.dead-table{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.dead-header{
+  display:grid;grid-template-columns:2fr 2fr 96px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+}
+.dead-row{
+  display:grid;grid-template-columns:2fr 2fr 96px;
+  padding:.9rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;
+  transition:background .12s;
+}
+.dead-row:last-child{border-bottom:none}
+.dead-row:hover{background:var(--bg)}
+.dead-row.risk-high{background:rgba(240,56,79,.03)}
+.dead-row.risk-mid{background:rgba(245,158,11,.03)}
+.dead-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.dead-file{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.dead-conf{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
+.conf-h{background:var(--coral-bg);color:var(--coral)}
+.conf-m{background:var(--amber-bg);color:var(--amber)}
+.conf-l{background:var(--sky-bg);color:var(--sky)}
+
+/* ── Priority block ── */
+.priority-list{display:flex;flex-direction:column;gap:10px;margin-bottom:1rem}
+.priority-item{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:4px solid var(--orange);
+  border-radius:16px;
+  padding:1.25rem 1.5rem;
+  display:grid;grid-template-columns:56px 1fr auto;
+  gap:1.25rem;align-items:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s;
+}
+.priority-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.priority-item.act-layer2{border-left-color:var(--green)}
+.priority-item.act-delete{border-left-color:var(--coral)}
+.priority-item.act-monitor{border-left-color:var(--sky)}
+.priority-rank{font-family:var(--display);font-size:38px;font-weight:800;color:var(--text3);line-height:1;text-align:center}
+.priority-name{font-size:15px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.35rem}
+.priority-reason{font-size:12px;color:var(--text2);line-height:1.55}
+.priority-action{
+  font-size:11px;font-family:var(--mono);
+  padding:6px 14px;border-radius:20px;
+  white-space:nowrap;cursor:default;display:inline-block;font-weight:500;
+}
+.act-layer2 .priority-action{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.act-delete  .priority-action{background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.3)}
+.act-monitor .priority-action{background:var(--sky-bg);color:var(--sky);border:1px solid rgba(14,165,233,.3)}
+
+/* ── Warning box ── */
+.warn-box{
+  background:var(--amber-bg);
+  border:1px solid rgba(245,158,11,.3);
+  border-radius:16px;
+  padding:1.25rem 1.5rem;
+  display:flex;gap:12px;align-items:flex-start;
+  margin-top:2rem;
+}
+.warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.warn-text{font-size:12px;color:var(--text2);line-height:1.7;font-family:var(--mono)}
+.warn-text strong{color:var(--text)}
+
+/* ── Site nav ── */
+.site-nav{
+  display:flex;align-items:center;gap:6px;
+  padding:.6rem 1rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin-bottom:1.75rem;
+  flex-wrap:wrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.nav-crumb{
+  font-size:11px;font-family:var(--mono);
+  padding:4px 12px;border-radius:20px;
+  text-decoration:none;
+  transition:background .15s,color .15s;
+  white-space:nowrap;
+}
+.nav-crumb.current{
+  background:var(--orange-bg);color:var(--orange);
+  border:1px solid rgba(255,107,53,.25);font-weight:600;cursor:default;
+}
+.nav-crumb.link{
+  background:var(--bg);color:var(--text2);
+  border:1px solid var(--border);cursor:pointer;
+}
+.nav-crumb.link:hover{background:var(--border);color:var(--text)}
+.nav-crumb.dim{background:transparent;color:var(--text3);border-color:transparent;cursor:default}
+.nav-sep{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+/* ── Footer ── */
+.report-footer{
+  margin-top:3rem;padding-top:1.5rem;
+  border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.footer-left{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.footer-right{font-size:11px;font-family:var(--mono);color:var(--text3)}
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<!-- Zoom controls -->
+<div class="zoom-bar">
+  <div class="zoom-btn" onclick="zoom(-10)">−</div>
+  <span class="zoom-pct" id="pct">100%</span>
+  <div class="zoom-btn" onclick="zoom(+10)">+</div>
+  <span class="zoom-reset" onclick="resetZoom()">reset</span>
+</div>
+
+<div id="zoom-root">
+
+  <!-- Site nav -->
+  <nav class="site-nav" aria-label="報告導覽">
+    <span class="nav-crumb current">Layer 1 · 全局地圖</span>
+    <span class="nav-sep">›</span>
+    <span class="nav-crumb dim">Layer 2 · 模組深挖</span>
+  </nav>
+
+  <!-- Header -->
+  <div class="report-header">
+    <div class="header-left">
+      <div class="report-stamp">Layer 1 · Global Map Report</div>
+      <h1>程式碼庫<br><em>全局地圖</em></h1>
+      <p class="report-sub">00-global-map · Phase 0 Archaeology · 資料來源：dependency-map.json · git-stability.csv · dead-candidates.csv</p>
+    </div>
+    <div>
+      <div class="meta-pills">
+        <div class="meta-pill">產出日期 <strong>{{DATE}}</strong></div>
+        <div class="meta-pill">Solution <strong>{{SOLUTION_NAME}}</strong></div>
+        <div class="meta-pill">C# 專案數 <strong>{{PROJECT_COUNT}} 個</strong></div>
+        <div class="meta-pill">排除 <strong>*Ex.csproj · .vcxproj</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+    <div class="kpi-cell orange">
+      <div class="kpi-label">已分析的專案數</div>
+      <div class="kpi-num">{{PROJECT_COUNT}}</div>
+      <div class="kpi-note">排除 Ex 結尾與 C++ 專案</div>
+    </div>
+    <div class="kpi-cell coral">
+      <div class="kpi-label">沒有人依賴的模組</div>
+      <div class="kpi-num">{{ISLAND_COUNT}}</div>
+      <div class="kpi-note">刪除優先候選，需平行任務確認</div>
+    </div>
+    <div class="kpi-cell sky">
+      <div class="kpi-label">兩年沒人動過</div>
+      <div class="kpi-num">{{STALE_COUNT}}</div>
+      <div class="kpi-note">穩定訊號，不代表是死碼</div>
+    </div>
+    <div class="kpi-cell green">
+      <div class="kpi-label">可能沒在用的程式碼</div>
+      <div class="kpi-num">{{DEAD_COUNT}}</div>
+      <div class="kpi-note">private/internal，需人工確認</div>
+    </div>
+  </div>
+
+  <!-- Hub Modules -->
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">最多人在用的模組</div>
+      <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15</div>
+    </div>
+    <span class="sec-num">01 / 05</span>
+  </div>
+  <div class="hub-chart">
+    <div class="hub-chart-header">
+      <span>模組名稱</span>
+      <span>依賴次數</span>
+      <span>數量</span>
+      <span>風險等級</span>
+    </div>
+    <!--
+      ##HUB_ROWS## — 替換為從 dependency-map.json .hubs Top 15 產生的列
+      風險判斷：count/max >= 70% → 高風險 (risk-h)，>= 40% → 中風險 (risk-m)，其他 → 低風險 (risk-l)
+      格式範例（style="width:85%" 依實際比例填入）：
+      <div class="hub-row">
+        <span class="hub-name">{Name}</span>
+        <div class="hub-bar-track"><div class="hub-bar" style="width:{pct}%"></div></div>
+        <span class="hub-count">{count} 個</span>
+        <span class="hub-risk risk-{h|m|l}">{高風險|中風險|低風險}</span>
+      </div>
+    -->
+    <!-- ##HUB_ROWS## -->
+  </div>
+
+  <!-- Island Modules -->
+  <div class="sec-head coral">
+    <div>
+      <div class="sec-title">沒有人依賴的模組</div>
+      <div class="sec-desc">這些模組沒有任何專案引用它 — 刪除優先候選，仍須平行任務（Task A + Task B）確認後才能動</div>
+    </div>
+    <span class="sec-num">02 / 05</span>
+  </div>
+  <div class="island-grid">
+    <!--
+      ##ISLAND_CARDS## — 替換為從 dependency-map.json .islands × git-stability.csv 產生的卡片
+      island-years 填沉睡年數（整數，由 LastCommit 距今計算）
+      格式範例：
+      <div class="island-card">
+        <div class="island-years">{N}<span>年</span></div>
+        <div class="island-name">{Name}</div>
+        <div class="island-date">最後修改 {LastCommit}</div>
+      </div>
+    -->
+    <!-- ##ISLAND_CARDS## -->
+  </div>
+
+  <!-- Git Stability -->
+  <div class="sec-head sky">
+    <div>
+      <div class="sec-title">最近有人動過嗎？</div>
+      <div class="sec-desc">過去兩年 Commit 活躍度 — 沒人動 ≠ 死碼，可能是成熟且核心的模組</div>
+    </div>
+    <span class="sec-num">03 / 05</span>
+  </div>
+  <div class="git-wrap">
+    <div class="git-header">
+      <span>模組名稱</span>
+      <span>最近兩年改動頻率</span>
+      <span>Commit 數</span>
+      <span>最後修改</span>
+      <span>狀態</span>
+    </div>
+    <!--
+      ##GIT_ROWS## — 替換為從 git-stability.csv 全部列產生的資料列
+      git-bar width = Commits2yr/max*100%（max 為該批次最大值）
+      狀態判斷：ACTIVE → s-active（活躍），STALE → s-stale（沉睡），FROZEN → s-frozen（封存）
+      格式範例（style="width:62%" 依實際比例填入）：
+      <div class="git-row">
+        <span class="git-name">{Module}</span>
+        <div class="git-bar-track"><div class="git-bar" style="width:{pct}%"></div></div>
+        <span class="git-num">{Commits2yr}</span>
+        <span class="git-date">{LastCommit}</span>
+        <span class="git-status s-{active|stale|frozen}">{活躍|沉睡|封存}</span>
+      </div>
+    -->
+    <!-- ##GIT_ROWS## -->
+  </div>
+
+  <!-- Dead Code -->
+  <div class="sec-head violet">
+    <div>
+      <div class="sec-title">可能沒在用的程式碼</div>
+      <div class="sec-desc">Private / Internal — 在整個 Solution 內找不到呼叫者。需人工二次確認，Public 成員不在此列</div>
+    </div>
+    <span class="sec-num">04 / 05</span>
+  </div>
+  <div class="dead-table">
+    <div class="dead-header">
+      <span>功能名稱</span>
+      <span>所在位置</span>
+      <span>可信度</span>
+    </div>
+    <!--
+      ##DEAD_ROWS## — 替換為從 dead-candidates.csv Top 50 產生的資料列
+      可信度判斷：孤島模組 + FROZEN → 高可信 (conf-h)，STALE → 中可信 (conf-m)，其他 → 低可信 (conf-l)
+      高可信列加 class="dead-row risk-high"，中可信列加 class="dead-row risk-mid"
+      格式範例（RelativePath 含行號，例如 HMIKlarf/Parser.cs:142）：
+      <div class="dead-row">
+        <span class="dead-name">{Method}</span>
+        <span class="dead-file">{RelativePath}:{Line}</span>
+        <span class="dead-conf conf-{h|m|l}">{高可信|中可信|低可信}</span>
+      </div>
+    -->
+    <!-- ##DEAD_ROWS## -->
+  </div>
+
+  <!-- Priority -->
+  <div class="sec-head green">
+    <div>
+      <div class="sec-title">接下來怎麼做</div>
+      <div class="sec-desc">根據依賴關係 + 活躍度綜合判斷，建議優先執行的模組（3–6 項）</div>
+    </div>
+    <span class="sec-num">05 / 05</span>
+  </div>
+  <div class="priority-list">
+    <!--
+      ##PRIORITY_ITEMS## — 替換為 AI 根據分析綜合判斷的行動建議（建議 3–6 項）
+      priority-item 的 act- class 決定左側彩色邊條與 action 按鈕顏色：
+        act-layer2（綠色邊條 → 執行 Layer 2 深挖）
+        act-delete（紅色邊條 → 平行任務確認後刪除）
+        act-monitor（藍色邊條 → 監控觀察，先不動）
+      格式範例：
+      <div class="priority-item act-{layer2|delete|monitor}">
+        <div class="priority-rank">{N}</div>
+        <div class="priority-body">
+          <div class="priority-name">{ModuleName}</div>
+          <div class="priority-reason">{說明理由，引用具體數據}</div>
+        </div>
+        <span class="priority-action">{行動標籤}</span>
+      </div>
+    -->
+    <!-- ##PRIORITY_ITEMS## -->
+  </div>
+
+  <div class="warn-box">
+    <span class="warn-icon">&#9888;&#65039;</span>
+    <div class="warn-text">
+      可能沒在用的程式碼均為 private/internal 層級，可信度僅代表 grep 掃描結果的可信程度。<br>
+      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（cb8/cb9/ure 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
+      在此之前，請勿刪除任何 public 成員。
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="report-footer">
+    <span class="footer-left">Phase 0 · Layer 1 · 00-global-map</span>
+    <span class="footer-right">Generated by csharp-archaeology skill · VS Code Copilot Enterprise</span>
+  </div>
+
+</div><!-- /zoom-root -->
+
+<script>
+let scale = 1;
+const root = document.getElementById('zoom-root');
+const pct  = document.getElementById('pct');
+function zoom(delta){
+  scale = Math.min(1.5, Math.max(0.4, scale + delta/100));
+  root.style.transform = `scale(${scale})`;
+  pct.textContent = Math.round(scale*100)+'%';
+  document.body.style.minHeight = (root.offsetHeight * scale + 80) + 'px';
+}
+function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent='100%'; document.body.style.minHeight=''; }
+document.addEventListener('wheel', e=>{
+  if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoom(e.deltaY < 0 ? 10 : -10); }
+},{passive:false});
+</script>
+</body>
+</html>
