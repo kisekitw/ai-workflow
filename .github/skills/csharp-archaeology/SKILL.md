@@ -12,11 +12,12 @@ description: >
 
 ## 設計原則
 
-**PowerShell 做重活，AI 分批讀取結果。**
+**每個步驟都先寫成 `.ps1` 檔案，再執行。絕不把 script 壓成一行丟進 terminal。**
 
-500 萬行 codebase 不能一次餵給 AI。正確做法：
-- PowerShell script 掃描全部檔案，輸出結構化 JSON/CSV 中間檔
-- AI 分批讀取中間檔進行分析，每次只讀需要的部分
+500 萬行 codebase 的正確做法：
+- 每個 Step 的 PowerShell script 先存成獨立 `.ps1` 檔案
+- 確認檔案寫入後再執行
+- AI 分批讀取輸出的 JSON/CSV 中間檔進行分析
 - 不使用 Sub-agent（experimental feature，不穩定）
 
 ---
@@ -57,19 +58,39 @@ New-Item -ItemType Directory -Force -Path "docs/archaeology/tmp"
 > 時間：約 10–20 分鐘。
 > 中間檔：三份 JSON/CSV → AI 分批讀取 → 產出 `docs/archaeology/00-global-map.html`
 
-### Step 1：建立依賴拓樸 → dependency-map.json
+---
+
+### Step 1：建立依賴拓樸
+
+**先寫檔，再執行：**
+
+```
+將以下內容寫入 docs/archaeology/tmp/step1-dependency-map.ps1
+執行完成後再執行該檔案
+```
 
 ```powershell
+# step1-dependency-map.ps1
+$ErrorActionPreference = 'Stop'
+$root = (Get-Location).Path
+
 $allProjects = Get-ChildItem -Recurse -Filter "*.csproj" |
   Where-Object { $_.Name -notmatch "Ex\.csproj$" -and $_.Extension -eq ".csproj" }
+
+Write-Host "掃描 $($allProjects.Count) 個 C# project..."
 
 $dependencyMap = @{}
 foreach ($proj in $allProjects) {
   $projName = [System.IO.Path]::GetFileNameWithoutExtension($proj.Name)
-  [xml]$xml = Get-Content $proj.FullName -Encoding UTF8
-  $refs = $xml.SelectNodes("//ProjectReference/@Include") |
-    ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Value) }
-  $dependencyMap[$projName] = @($refs)
+  try {
+    [xml]$xml = Get-Content $proj.FullName -Encoding UTF8
+    $refs = $xml.SelectNodes("//ProjectReference/@Include") |
+      ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Value) }
+    $dependencyMap[$projName] = @($refs)
+  } catch {
+    Write-Warning "無法解析：$($proj.Name)"
+    $dependencyMap[$projName] = @()
+  }
 }
 
 $allReferenced = $dependencyMap.Values | ForEach-Object { $_ } | Sort-Object -Unique
@@ -82,42 +103,60 @@ foreach ($refs in $dependencyMap.Values) {
   }
 }
 
-@{
+$output = @{
   totalProjects = $allProjects.Count
   islands       = @($islands)
   hubs          = @($hubScore.GetEnumerator() |
                     Sort-Object Value -Descending | Select-Object -First 30 |
                     ForEach-Object { @{ name=$_.Key; count=$_.Value } })
   dependencyMap = $dependencyMap
-} | ConvertTo-Json -Depth 5 |
-  Out-File "docs/archaeology/tmp/dependency-map.json" -Encoding UTF8
+}
 
-Write-Host "dependency-map.json 產出完成 — 孤島：$($islands.Count) 個"
+$output | ConvertTo-Json -Depth 5 |
+  Out-File "docs/archaeology/tmp/dependency-map.json" -Encoding UTF8 -Force
+
+Write-Host "dependency-map.json 產出完成"
+Write-Host "孤島模組：$($islands.Count) 個"
+Write-Host "樞紐 Top 3：$(($output.hubs | Select-Object -First 3 | ForEach-Object { "$($_.name)($($_.count))" }) -join ', ')"
 ```
 
-**AI 讀取**：讀取 `dependency-map.json` 一次讀完（結構化 JSON，context 壓力小）。
+**執行：**
+```powershell
+.\docs\archaeology\tmp\step1-dependency-map.ps1
+```
 
 ---
 
-### Step 2：Git 穩定度 → git-stability.csv
+### Step 2：Git 穩定度
 
-> 穩定度低 ≠ 死碼。穩定 = 成熟模組，可能非常核心。
+**先寫檔，再執行：**
+
+```
+將以下內容寫入 docs/archaeology/tmp/step2-git-stability.ps1
+執行完成後再執行該檔案
+```
 
 ```powershell
+# step2-git-stability.ps1
+$ErrorActionPreference = 'Stop'
+
 $allProjects = Get-ChildItem -Recurse -Filter "*.csproj" |
   Where-Object { $_.Name -notmatch "Ex\.csproj$" }
+
+Write-Host "分析 $($allProjects.Count) 個 project 的 git 活躍度..."
 
 $report = foreach ($proj in $allProjects) {
   $folder    = $proj.DirectoryName
   $projName  = [System.IO.Path]::GetFileNameWithoutExtension($proj.Name)
-  $commits2y = (git log --since="2 years ago" --oneline -- "$folder" 2>$null |
-                Measure-Object -Line).Lines
+
+  $commits2y  = (git log --since="2 years ago" --oneline -- "$folder" 2>$null |
+                 Measure-Object -Line).Lines
   $lastCommit = git log -1 --format="%ad" --date=short -- "$folder" 2>$null
 
   [PSCustomObject]@{
     Module     = $projName
     Commits2yr = $commits2y
-    LastCommit = $lastCommit
+    LastCommit = if ($lastCommit) { $lastCommit } else { "N/A" }
     Status     = if ($commits2y -eq 0) { "FROZEN" }
                  elseif ($commits2y -lt 10) { "STALE" }
                  else { "ACTIVE" }
@@ -125,56 +164,121 @@ $report = foreach ($proj in $allProjects) {
 }
 
 $report | Sort-Object Commits2yr |
-  Export-Csv "docs/archaeology/tmp/git-stability.csv" -NoTypeInformation -Encoding UTF8
+  Export-Csv "docs/archaeology/tmp/git-stability.csv" -NoTypeInformation -Encoding UTF8 -Force
 
 Write-Host "git-stability.csv 產出完成"
 Write-Host "FROZEN（2年零 commit）：$(($report | Where-Object Status -eq 'FROZEN').Count) 個"
+Write-Host "STALE（少於 10 commits）：$(($report | Where-Object Status -eq 'STALE').Count) 個"
+Write-Host "ACTIVE：$(($report | Where-Object Status -eq 'ACTIVE').Count) 個"
 ```
 
-**AI 讀取**：讀取 `git-stability.csv` 一次讀完（純數字，context 壓力小）。
+**執行：**
+```powershell
+.\docs\archaeology\tmp\step2-git-stability.ps1
+```
 
 ---
 
-### Step 3：Private/Internal 死碼掃描 → dead-candidates.csv
+### Step 3：Private/Internal 死碼掃描
 
-> 候選清單，誤報率比 Roslyn 高，需人工二次確認。
+**先寫檔，再執行：**
+
+```
+將以下內容寫入 docs/archaeology/tmp/step3-dead-scan.ps1
+執行完成後再執行該檔案
+```
 
 ```powershell
-$allCsFiles    = Get-ChildItem -Recurse -Filter "*.cs" |
-  Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" }
-$skipPattern   = "^(InitializeComponent|Dispose|get_|set_|add_|remove_|On[A-Z])"
-$methodPattern = '(?:private|internal)\s+(?:static\s+)?(?:\w+[\[\]?]*\s+)+(\w+)\s*\('
-$deadCandidates = [System.Collections.Generic.List[PSCustomObject]]::new()
+# step3-dead-scan.ps1
+$ErrorActionPreference = 'Stop'
+$root = (Get-Location).Path
 
-foreach ($file in $allCsFiles) {
-  $content = Get-Content $file.FullName -Raw
+# 取得所有 Ex.csproj 的資料夾（排除這些資料夾內的 .cs 檔案）
+$exProjDirs = Get-ChildItem -Recurse -Filter '*Ex.csproj' |
+  ForEach-Object { $_.DirectoryName }
+
+$allCsFiles = Get-ChildItem -Recurse -Filter "*.cs" | Where-Object {
+  $_.FullName -notmatch '\\obj\\' -and
+  $_.FullName -notmatch '\\bin\\' -and
+  $_.Length -gt 0
+}
+
+# 排除 Ex 資料夾內的檔案
+$filteredFiles = $allCsFiles | Where-Object {
+  $filePath = $_.FullName
+  $skip = $false
+  foreach ($exDir in $exProjDirs) {
+    if ($filePath.StartsWith($exDir)) { $skip = $true; break }
+  }
+  -not $skip
+}
+
+Write-Host "掃描 $($filteredFiles.Count) 個 .cs 檔案..."
+
+$skipPattern   = '^(InitializeComponent|Dispose|get_|set_|add_|remove_|On[A-Z])'
+$methodPattern = '(?:private|internal)\s+(?:static\s+)?(?:\w+[\[\]?]*\s+)+(\w+)\s*\('
+
+# 第一步：收集所有 method 定義
+$fileMethods = [System.Collections.Generic.List[PSCustomObject]]::new()
+foreach ($f in $filteredFiles) {
+  $content = Get-Content $f.FullName -Raw -Encoding UTF8
   foreach ($m in [regex]::Matches($content, $methodPattern)) {
     $name = $m.Groups[1].Value
     if ($name -match $skipPattern) { continue }
+    $line = ($content.Substring(0, $m.Index) -split "`n").Count
+    $fileMethods.Add([PSCustomObject]@{
+      Method = $name
+      File   = $f.FullName
+      Line   = $line
+    })
+  }
+}
 
-    $callers = ($allCsFiles |
-      Select-String -Pattern "\b$name\b" -SimpleMatch |
-      Where-Object { $_.Path -ne $file.FullName } |
-      Measure-Object).Count
+Write-Host "找到 $($fileMethods.Count) 個 private/internal method，開始交叉搜尋呼叫者..."
 
-    if ($callers -eq 0) {
-      $deadCandidates.Add([PSCustomObject]@{
-        Method = $name
-        File   = $file.FullName.Replace($PWD.Path, '')
-        Line   = ($content.Substring(0, $m.Index) -split "`n").Count
-      })
+# 第二步：建立全域 token 計數（避免重複 grep 同名 method）
+$globalTokenCount = @{}
+foreach ($f in $filteredFiles) {
+  $content = Get-Content $f.FullName -Raw -Encoding UTF8
+  foreach ($entry in $fileMethods) {
+    $name = $entry.Method
+    if (-not $globalTokenCount.ContainsKey($name)) {
+      $globalTokenCount[$name] = 0
     }
+    $selfCount = ([regex]::Matches($content, "\b$([regex]::Escape($name))\b")).Count
+    $globalTokenCount[$name] += $selfCount
+  }
+}
+
+# 第三步：找出呼叫者為 0 的 method
+$deadCandidates = [System.Collections.Generic.List[PSCustomObject]]::new()
+foreach ($entry in $fileMethods) {
+  $name        = $entry.Method
+  $fileContent = Get-Content $entry.File -Raw -Encoding UTF8
+  $selfCount   = ([regex]::Matches($fileContent, "\b$([regex]::Escape($name))\b")).Count
+  $totalCount  = if ($globalTokenCount.ContainsKey($name)) { $globalTokenCount[$name] } else { 0 }
+  $callers     = [Math]::Max(0, $totalCount - $selfCount)
+
+  if ($callers -eq 0) {
+    $rel = $entry.File.Replace($root, '')
+    $deadCandidates.Add([PSCustomObject]@{
+      Method = $name
+      File   = $rel
+      Line   = $entry.Line
+    })
   }
 }
 
 $deadCandidates |
-  Export-Csv "docs/archaeology/tmp/dead-candidates.csv" -NoTypeInformation -Encoding UTF8
+  Export-Csv 'docs/archaeology/tmp/dead-candidates.csv' -NoTypeInformation -Encoding UTF8 -Force
 
 Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候選"
 ```
 
-**AI 讀取**：dead-candidates.csv 可能數千筆，**每次讀 TOP 50**，
-優先讀孤島模組（dependency-map.json 中的 islands）內的候選。
+**執行：**
+```powershell
+.\docs\archaeology\tmp\step3-dead-scan.ps1
+```
 
 ---
 
@@ -208,7 +312,7 @@ Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候�
 - 樞紐模組 bar chart（Top 15，含風險標籤）
 - 孤島模組卡片（含最後異動日期）
 - Git 穩定度表格（ACTIVE / STALE / FROZEN badge）
-- 死碼候選表格（可展開，信心度 HIGH / MED / LOW）
+- 死碼候選表格（信心度 HIGH / MED / LOW）
 - 行動建議優先序（Layer 2 / 待刪 / 監控）
 - 警告框：public API 死碼需等平行任務完成後才能確認
 
@@ -222,40 +326,88 @@ Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候�
 > 時間：每個模組約 5–10 分鐘。
 > 輸出：`docs/archaeology/[ModuleName]-report.html`
 
-### Step 1：找出 Public API → [Module]-api.json
+### Step 1：找出 Public API
+
+**先寫檔，再執行：**
+
+```
+將以下內容寫入 docs/archaeology/tmp/layer2-step1-api.ps1
+執行完成後再執行該檔案
+```
 
 ```powershell
-$moduleName   = "[RD 指定的模組名稱]"
-$moduleFolder = Get-ChildItem -Recurse -Filter "$moduleName.csproj" |
+# layer2-step1-api.ps1
+param([string]$ModuleName)
+$ErrorActionPreference = 'Stop'
+
+$moduleFolder = Get-ChildItem -Recurse -Filter "$ModuleName.csproj" |
   Where-Object { $_.Name -notmatch "Ex\.csproj$" } |
   Select-Object -First 1 -ExpandProperty DirectoryName
 
-$csFiles  = Get-ChildItem -Path $moduleFolder -Recurse -Filter "*.cs" |
-  Where-Object { $_.FullName -notmatch "\\obj\\" }
-$publicApi = [System.Collections.Generic.List[PSCustomObject]]::new()
+if (-not $moduleFolder) {
+  Write-Error "找不到 $ModuleName.csproj，請確認模組名稱"
+  exit 1
+}
 
+Write-Host "分析模組：$ModuleName（$moduleFolder）"
+
+$csFiles  = Get-ChildItem -Path $moduleFolder -Recurse -Filter "*.cs" |
+  Where-Object { $_.FullName -notmatch '\\obj\\' }
+
+$publicApi = [System.Collections.Generic.List[PSCustomObject]]::new()
 foreach ($file in $csFiles) {
-  $content = Get-Content $file.FullName -Raw
+  $content = Get-Content $file.FullName -Raw -Encoding UTF8
   [regex]::Matches($content, 'public\s+(?:partial\s+)?class\s+(\w+)') |
-    ForEach-Object { $publicApi.Add([PSCustomObject]@{ Type="class";  Name=$_.Groups[1].Value; File=$file.Name }) }
+    ForEach-Object {
+      $publicApi.Add([PSCustomObject]@{ Type="class"; Name=$_.Groups[1].Value; File=$file.Name })
+    }
   [regex]::Matches($content, 'public\s+(?:static\s+|virtual\s+|override\s+)?(?:\w+[\[\]?]*\s+)+(\w+)\s*\(') |
-    ForEach-Object { $publicApi.Add([PSCustomObject]@{ Type="method"; Name=$_.Groups[1].Value; File=$file.Name }) }
+    ForEach-Object {
+      $publicApi.Add([PSCustomObject]@{ Type="method"; Name=$_.Groups[1].Value; File=$file.Name })
+    }
 }
 
 $publicApi | ConvertTo-Json |
-  Out-File "docs/archaeology/tmp/$moduleName-api.json" -Encoding UTF8
-Write-Host "找到 $($publicApi.Count) 個 public API"
+  Out-File "docs/archaeology/tmp/$ModuleName-api.json" -Encoding UTF8 -Force
+
+Write-Host "找到 $($publicApi.Count) 個 public API → $ModuleName-api.json"
 ```
 
-### Step 2：搜尋呼叫者 → [Module]-usage.csv
+**執行：**
+```powershell
+.\docs\archaeology\tmp\layer2-step1-api.ps1 -ModuleName "HMIWafermap"
+```
+
+### Step 2：搜尋呼叫者
+
+**先寫檔，再執行：**
+
+```
+將以下內容寫入 docs/archaeology/tmp/layer2-step2-usage.ps1
+執行完成後再執行該檔案
+```
 
 ```powershell
-$allCsFiles = Get-ChildItem -Recurse -Filter "*.cs" |
-  Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch $moduleFolder }
+# layer2-step2-usage.ps1
+param([string]$ModuleName)
+$ErrorActionPreference = 'Stop'
 
-$usageReport = foreach ($api in $publicApi) {
+$moduleFolder = Get-ChildItem -Recurse -Filter "$ModuleName.csproj" |
+  Where-Object { $_.Name -notmatch "Ex\.csproj$" } |
+  Select-Object -First 1 -ExpandProperty DirectoryName
+
+$apiJson  = Get-Content "docs/archaeology/tmp/$ModuleName-api.json" -Raw | ConvertFrom-Json
+$allCsFiles = Get-ChildItem -Recurse -Filter "*.cs" | Where-Object {
+  $_.FullName -notmatch '\\obj\\' -and
+  $_.FullName -notmatch '\\bin\\' -and
+  $_.FullName -notmatch $moduleFolder
+}
+
+Write-Host "搜尋 $($apiJson.Count) 個 API 在 $($allCsFiles.Count) 個檔案中的呼叫者..."
+
+$usageReport = foreach ($api in $apiJson) {
   $callers = $allCsFiles |
-    Select-String -Pattern "\b$($api.Name)\b" -SimpleMatch |
+    Select-String -Pattern "\b$([regex]::Escape($api.Name))\b" -SimpleMatch |
     Select-Object -ExpandProperty Path | Sort-Object -Unique
 
   [PSCustomObject]@{
@@ -267,10 +419,15 @@ $usageReport = foreach ($api in $publicApi) {
 }
 
 $usageReport | Sort-Object CallerCount |
-  Export-Csv "docs/archaeology/tmp/$moduleName-usage.csv" -NoTypeInformation -Encoding UTF8
+  Export-Csv "docs/archaeology/tmp/$ModuleName-usage.csv" -NoTypeInformation -Encoding UTF8 -Force
 
-Write-Host "usage.csv 產出完成"
+Write-Host "$ModuleName-usage.csv 產出完成"
 Write-Host "Solution 內零呼叫：$(($usageReport | Where-Object CallerCount -eq 0).Count) 個"
+```
+
+**執行：**
+```powershell
+.\docs\archaeology\tmp\layer2-step2-usage.ps1 -ModuleName "HMIWafermap"
 ```
 
 ### Layer 2 最終輸出

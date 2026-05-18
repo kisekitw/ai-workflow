@@ -17,14 +17,15 @@ agent can continue the work.
 
 ## Instructions
 
-1. Save the document to a path produced by:
+1. Save the document to:
    ```
-   mktemp -t handoff-XXXXXX.md
+   docs/archaeology/handoff-[YYYYMMDD-HHmm].md
    ```
-   Read the file before you write to it.
+   Use the current date and time for the filename, e.g. `handoff-20260518-1430.md`.
+   Create the folder if it does not exist.
 
 2. **Do not duplicate** content already captured in other artifacts
-   (PRDs, plans, ADRs, issues, commits, diffs). Reference them by path
+   (reports, ADRs, issues, commits, diffs). Reference them by path
    or URL instead.
 
 3. Suggest the skills to be used, if any, by the next session.
