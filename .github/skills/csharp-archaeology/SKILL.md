@@ -18,6 +18,32 @@ description: >
 所有 PowerShell 邏輯住在 `.github/skills/csharp-archaeology/scripts/` 獨立檔案中。
 SKILL.md 只包含說明、決策規則、步驟指令（呼叫哪個 script）、AI 分析指引。
 
+**原則 D：環境工具白名單（嚴格遵守）**
+
+> ⚠️ 此 skill 在 VDI / 企業受控環境執行，**禁止使用任何需要額外安裝的外部工具**。
+
+AI 在執行本 skill 的任何步驟時，**只允許**使用以下工具：
+
+| 允許工具 | 用途 |
+|----------|------|
+| PowerShell 原生 cmdlet（`Get-Content`、`Select-String`、`Get-ChildItem`、`Where-Object` 等） | 檔案讀取與搜尋 |
+| `git`（假設已安裝） | 版本歷史查詢（step2、layer2-step2 已使用） |
+| `.ps1` scripts（本 skill 的 scripts/ 資料夾） | 所有分析邏輯 |
+
+**嚴格禁止**使用以下工具（即使在其他環境下可用）：
+
+| 禁止工具 | 原因 |
+|----------|------|
+| `rg` / `ripgrep` | 需額外安裝，VDI 環境無此工具 |
+| `fd` | 需額外安裝 |
+| `bat` | 需額外安裝 |
+| `fzf` | 需額外安裝 |
+| 任何 `choco` / `winget` / `scoop` 安裝的工具 | 受控環境無安裝權限 |
+
+若需搜尋檔案內容，使用 PowerShell 原生替代：
+- `rg "pattern" path` → `Get-ChildItem path -Recurse | Select-String "pattern"`
+- `rg "pattern" file -n` → `Select-String -Path file -Pattern "pattern"`
+
 **原則 B：兩種輸出格式，目的不同**
 
 | 格式 | 目的 | 對象 |
