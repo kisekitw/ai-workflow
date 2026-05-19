@@ -1,6 +1,6 @@
 # step1-dependency-map.ps1
 # Phase 0 Layer 1 — 建立專案依賴拓樸
-# 輸出：docs/archaeology/tmp/dependency-map.json
+# 輸出：.analysis/tmp/dependency-map.json
 #
 # 排除規則：
 #   - *Ex.csproj 結尾（擴充專案）
@@ -54,9 +54,9 @@ $output = @{
   dependencyMap = $dependencyMap
 }
 
-New-Item -ItemType Directory -Force -Path "docs/archaeology/tmp" | Out-Null
+New-Item -ItemType Directory -Force -Path ".analysis/tmp" | Out-Null
 $output | ConvertTo-Json -Depth 5 |
-  Out-File "docs/archaeology/tmp/dependency-map.json" -Encoding UTF8 -Force
+  Out-File ".analysis/tmp/dependency-map.json" -Encoding UTF8 -Force
 
 Write-Host ""
 Write-Host "=== dependency-map.json 產出完成 ==="

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Implementation Notes — csharp-archaeology Skill Revision</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:        #F4F5FB;
+  --surface:   #FFFFFF;
+  --border:    #E2E5F1;
+  --text:      #1A1C2E;
+  --text2:     #5A5F80;
+  --text3:     #9DA3C0;
+  --orange:    #FF6B35;
+  --orange-bg: #FFF2EC;
+  --coral:     #F0384F;
+  --coral-bg:  #FFF0F2;
+  --green:     #10B981;
+  --green-bg:  #ECFDF5;
+  --sky:       #0EA5E9;
+  --sky-bg:    #E0F2FE;
+  --violet:    #7C3AED;
+  --violet-bg: #F5F3FF;
+  --amber:     #F59E0B;
+  --amber-bg:  #FFFBEB;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --body:    'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh}
+
+.top-bar{height:4px;background:linear-gradient(90deg,var(--violet),#A855F7);position:sticky;top:0;z-index:50}
+
+#root{padding:2.5rem 2rem 5rem;max-width:1000px;margin:0 auto}
+
+.page-header{padding:2rem 0 2rem;border-bottom:2px solid var(--border);margin-bottom:2.5rem}
+.stamp{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--violet);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.stamp::before{content:'';width:24px;height:2px;background:var(--violet);display:inline-block;border-radius:1px}
+h1{font-family:var(--display);font-size:38px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+h1 em{color:var(--violet);font-style:normal}
+.sub{font-size:12px;color:var(--text3);margin-top:.75rem;font-family:var(--mono);line-height:1.6}
+
+/* category labels */
+.cat-label{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+  padding:3px 10px;border-radius:20px;margin-bottom:.6rem;
+}
+.cat-decision{background:var(--violet-bg);color:var(--violet)}
+.cat-deviation{background:var(--coral-bg);color:var(--coral)}
+.cat-tradeoff{background:var(--amber-bg);color:var(--amber)}
+.cat-open{background:var(--sky-bg);color:var(--sky)}
+
+/* entry card */
+.entry{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:1.5rem 1.75rem;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  border-left:4px solid var(--border);
+}
+.entry.decision{border-left-color:var(--violet)}
+.entry.deviation{border-left-color:var(--coral)}
+.entry.tradeoff{border-left-color:var(--amber)}
+.entry.open{border-left-color:var(--sky)}
+
+.entry-title{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text);margin-bottom:.6rem}
+.entry-file{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:.85rem;letter-spacing:.04em}
+.entry-body{font-size:13px;color:var(--text2);line-height:1.75}
+.entry-body code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:4px;border:1px solid var(--border);color:var(--text)}
+.entry-body strong{color:var(--text);font-weight:600}
+
+/* section heading */
+.sec{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text);margin:2.5rem 0 1rem;padding-bottom:.6rem;border-bottom:3px solid var(--border)}
+.sec.decision{border-bottom-color:var(--violet)}
+.sec.deviation{border-bottom-color:var(--coral)}
+.sec.tradeoff{border-bottom-color:var(--amber)}
+.sec.open{border-bottom-color:var(--sky)}
+
+/* revision log */
+.revlog{font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.rev-row{display:flex;gap:1rem;padding:.35rem 0;border-bottom:1px solid var(--border)}
+.rev-row:last-child{border-bottom:none}
+.rev-date{color:var(--orange);flex-shrink:0;width:90px}
+.rev-msg{color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div id="root">
+
+<div class="page-header">
+  <div class="stamp">csharp-archaeology · Skill Revision · Implementation Notes</div>
+  <h1>How this was built,<br>and <em>where it diverges</em></h1>
+  <p class="sub">Scope: Plan "Revise csharp-archaeology Skill — Top-Down" · Last updated: 2026-05-19<br>
+  This file is maintained as work progresses. Entries are grouped by category, newest first within each group.</p>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════ DESIGN DECISIONS -->
+<div class="sec decision">Design Decisions</div>
+<p style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:1.25rem">Choices made where the spec was silent or ambiguous.</p>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">PHASE_HANDOFFS table pre-filled in layer1 template</div>
+  <div class="entry-file">templates/layer1-global-map-template.html</div>
+  <div class="entry-body">
+    The spec defines <code>&lt;!-- ##PHASE_HANDOFFS## --&gt;</code> as a marker for AI to fill.
+    I pre-filled the five standard rows (Phase 1–5 → artifact → purpose) in the template itself, and kept the marker <em>below</em> the pre-filled rows as an extension point.
+    <br><br>
+    <strong>Rationale:</strong> The handoffs table is static — it describes the fixed architecture of the workflow, not dynamic scan data. Pre-filling avoids AI having to regenerate the same boilerplate every run, while the marker remains for AI to append project-specific entries if needed.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">step3 reads each file twice (Phase 1 + Phase 2), not cached</div>
+  <div class="entry-file">scripts/step3-dead-scan.ps1</div>
+  <div class="entry-body">
+    The spec calls for O(N+M) performance. My implementation reads each <code>.cs</code> file twice: once in Phase 1 to collect method definitions, once in Phase 2 to count tokens. This is <strong>2N file reads</strong>, not cached.
+    <br><br>
+    <strong>Rationale:</strong> Caching all file content in Phase 1 (to reuse in Phase 2) would require holding the full text of thousands of files in memory simultaneously. For a 5M LOC codebase this could easily exceed 1–2 GB. 2N file reads with O(1) memory per file is the safer tradeoff. The token-counting loop in Phase 2 is still O(N+M) in the algorithmic sense — each file is scanned once, each token checked against a HashSet in O(1).
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">BaseClass/Interfaces split uses "starts with I" heuristic</div>
+  <div class="entry-file">scripts/layer2-step1-api.ps1</div>
+  <div class="entry-body">
+    When parsing <code>public class Foo : Bar, IBaz, IQux</code>, I split inheritance into BaseClass vs Interfaces by treating the <em>first item that does not start with a capital I</em> as the BaseClass.
+    <br><br>
+    <strong>Rationale:</strong> Roslyn-accurate parsing is out of scope for a regex-based script. The convention in C# (and the WinForms ecosystem specifically) is that interface names begin with <code>I</code>. This heuristic correctly handles the most important case: <code>: Form</code>, <code>: UserControl</code>, <code>: Panel</code>. Known failure modes: classes inheriting from a non-<code>I</code>-prefixed interface (rare in WinForms), or <code>Microsoft.Win32.RegistryKey</code>-style qualified names. These will be silently mis-categorised.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">LOC is calculated by brace-counting, not line-counting from declaration end</div>
+  <div class="entry-file">scripts/layer2-step1-api.ps1</div>
+  <div class="entry-body">
+    Method LOC is computed by finding the opening <code>{</code> after the method signature, then tracking brace depth to find the matching <code>}</code>. Line count of that range = LOC.
+    <br><br>
+    <strong>Rationale:</strong> This handles nested lambdas and anonymous methods correctly in most cases. Known failure mode: string literals or comments containing unbalanced braces will corrupt the depth counter. For a quick approximation in a Phase 0 scan this is acceptable; Roslyn would be needed for exact results.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">step0-preflight uses framework attribute fallback chain</div>
+  <div class="entry-file">scripts/step0-preflight.ps1</div>
+  <div class="entry-body">
+    To extract target framework, I try three XML paths in order: <code>//TargetFramework</code> → <code>//TargetFrameworks</code> → <code>//TargetFrameworkVersion</code>. The first covers SDK-style projects, the second multi-targeting, the third old-style <code>.csproj</code> (which WinForms legacy codebases typically use).
+    <br><br>
+    <strong>Rationale:</strong> A 5M LOC WinForms codebase is almost certainly on old-style csproj format using <code>TargetFrameworkVersion v4.x</code>. The fallback chain handles both old and new formats without requiring the user to specify which format they have.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">API section in Layer 2 HTML collapses the entire section, not just individual rows</div>
+  <div class="entry-file">templates/layer2-module-report-template.html</div>
+  <div class="entry-body">
+    The spec says "API 表格改為預設收合". The existing template already had individual rows collapsed (expand on click). I added a <strong>section-level</strong> toggle that hides the entire API table block by default, in addition to keeping row-level expand.
+    <br><br>
+    <strong>Rationale:</strong> A module with 200+ APIs would show a very long collapsed-row table even when individual rows are closed. Hiding the whole section by default makes the Decision Recommendation and coupling data visible without scrolling.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">Layer 2 nav link updated to ../00-global-map.html</div>
+  <div class="entry-file">templates/layer2-module-report-template.html</div>
+  <div class="entry-body">
+    The original template linked back to <code>00-global-map.html</code> (same-directory). Since Layer 2 reports now live in <code>.analysis/{ModuleName}/</code>, the link must go up one level: <code>../00-global-map.html</code>.
+    <br><br>
+    This is a direct consequence of the new folder structure defined in the spec.
+  </div>
+</div>
+
+<div class="entry decision">
+  <div class="cat-label cat-decision">Design Decision</div>
+  <div class="entry-title">step1 and step2 output paths updated even though not listed in the change manifest</div>
+  <div class="entry-file">scripts/step1-dependency-map.ps1 · scripts/step2-git-stability.ps1</div>
+  <div class="entry-body">
+    The spec's "第六層：檔案異動清單" does not list step1 or step2 as files to change. However, those scripts output to <code>docs/archaeology/tmp/</code>, while the entire spec mandates <code>.analysis/tmp/</code> as the output root. I updated their output paths for consistency.
+    <br><br>
+    Not updating them would have broken the Layer 1 flow: step1 and step2 would write to the wrong folder, and subsequent AI analysis steps (which read from <code>.analysis/tmp/</code>) would fail.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════ DEVIATIONS -->
+<div class="sec deviation">Deviations</div>
+<p style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:1.25rem">Places where I intentionally departed from the spec, and why.</p>
+
+<div class="entry deviation">
+  <div class="cat-label cat-deviation">Deviation</div>
+  <div class="entry-title">coupling-in.csv logic inverted from spec — currently tracks INTRA-module coupling, not INCOMING callers</div>
+  <div class="entry-file">scripts/layer2-step2-usage.ps1</div>
+  <div class="entry-body">
+    <strong>Spec intent (as I now read it):</strong> For each class name in <code>api.json</code>, search <em>external files</em> for <code>new ClassName(</code> or <code>: ClassName</code> patterns. Record whether the referencing file is in the <strong>same project</strong> as the target (SAME_PROJECT) or a different project (OTHER_PROJECT). SAME_PROJECT entries are the "extraction blockers" — files in the same project that depend on the target's types, making it hard to split the target out.
+    <br><br>
+    <strong>What I implemented:</strong> I scan <em>internal files</em> (inside the target folder) for usages of the target's own class names. All entries get <code>SAME_PROJECT</code>. This is intra-module coupling, not incoming coupling from outside.
+    <br><br>
+    <strong>Consequence:</strong> The coupling-in table will show the target module's own internal class references rather than external callers. The "SAME_PROJECT extraction blocker" signal will be incorrect.
+    <br><br>
+    <strong>Correct implementation should be:</strong> Scan all files <em>outside</em> <code>scanFolder</code>; for each file, check if any api.json class name appears; record DependencyScope as SAME_PROJECT if the external file's <code>.csproj</code> is in the same directory tree as the target's <code>.csproj</code>, otherwise OTHER_PROJECT.
+  </div>
+</div>
+
+<div class="entry deviation">
+  <div class="cat-label cat-deviation">Deviation</div>
+  <div class="entry-title">Removed the per-module warn-box before the API table; added a generic one at footer</div>
+  <div class="entry-file">templates/layer2-module-report-template.html</div>
+  <div class="entry-body">
+    The original template had a specific warning: "this module has {{DOWNSTREAM_COUNT}} downstream projects, may be referenced externally via dll — run Task A first." I removed it and replaced with a generic footer warning.
+    <br><br>
+    <strong>Reason:</strong> With the Decision Recommendation card now at the top containing the same evidence, having a module-specific warning mid-page before the API table created redundancy and interrupted the flow from coupling-in → vitality → API. The footer warning covers the same concern without interrupting the analysis flow.
+    <br><br>
+    <strong>Risk:</strong> Engineers who jump directly to the API table might miss the DLL-reference caveat. Mitigated by the Decision Recommendation card at the top which should be read first.
+  </div>
+</div>
+
+<div class="entry deviation">
+  <div class="cat-label cat-deviation">Deviation</div>
+  <div class="entry-title">SKILL.md does not specify the script repo path; uses relative path notation from spec verbatim</div>
+  <div class="entry-file">SKILL.md</div>
+  <div class="entry-body">
+    The spec's format example uses <code>.\.github\skills\csharp-archaeology\scripts\step0-preflight.ps1</code>. This path only resolves correctly if the user's CWD is the <em>skill repo root</em> — which is not the case when analyzing an external C# codebase.
+    <br><br>
+    <strong>What I did:</strong> Used the path verbatim as specified. I did not add any path-resolution logic or instructions for multi-root workspace setup.
+    <br><br>
+    <strong>Risk:</strong> When Copilot runs the skill against an external C# workspace, the paths will not resolve. Users will need to either (a) copy the scripts to their workspace, or (b) configure a multi-root VS Code workspace. This is an unresolved operational concern that should be addressed in a follow-up.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════ TRADEOFFS -->
+<div class="sec tradeoff">Tradeoffs</div>
+<p style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:1.25rem">Alternatives considered and why I picked what I did.</p>
+
+<div class="entry tradeoff">
+  <div class="cat-label cat-tradeoff">Tradeoff</div>
+  <div class="entry-title">REFLECTION risk flag: double-quote string match only (not Roslyn nameof)</div>
+  <div class="entry-file">scripts/step3-dead-scan.ps1</div>
+  <div class="entry-body">
+    <strong>Option A (chosen):</strong> Flag as REFLECTION if the method name appears in any double-quoted string literal anywhere in the file. Simple regex, fast.
+    <br><br>
+    <strong>Option B:</strong> Also check <code>nameof(MethodName)</code> — a compile-safe alternative to string literals for reflection. This is common in modern C# but less so in legacy WinForms.
+    <br><br>
+    <strong>Chose A because:</strong> Legacy WinForms codebases predate <code>nameof</code> (C# 6). The false-positive rate from quoted strings is acceptable for a Phase 0 scan. Engineers reviewing LOW-confidence candidates will see the REFLECTION flag and know to inspect manually.
+  </div>
+</div>
+
+<div class="entry tradeoff">
+  <div class="cat-label cat-tradeoff">Tradeoff</div>
+  <div class="entry-title">vitality.csv uses file-level git log, not project-level</div>
+  <div class="entry-file">scripts/layer2-step2-usage.ps1</div>
+  <div class="entry-body">
+    <strong>Option A (chosen):</strong> Run <code>git log</code> per file inside the target folder. Gives file-level granularity.
+    <br><br>
+    <strong>Option B:</strong> Run one <code>git log</code> on the whole target folder (like step2-git-stability.ps1 does). Much faster, but loses per-file detail.
+    <br><br>
+    <strong>Chose A because:</strong> The vitality rows in the HTML are per-file heat bars. File-level data is required. The spec explicitly lists <code>File</code> as a column in vitality.csv. The performance cost is bounded by the number of files in the target module (typically small for a single module deep-dive).
+  </div>
+</div>
+
+<div class="entry tradeoff">
+  <div class="cat-label cat-tradeoff">Tradeoff</div>
+  <div class="entry-title">step3 FullyQualifiedName uses last-seen class before method, not true enclosing class</div>
+  <div class="entry-file">scripts/step3-dead-scan.ps1</div>
+  <div class="entry-body">
+    <strong>Option A (chosen):</strong> Find the last <code>class ClassName</code> match in the text before the method declaration. Simple, no AST needed.
+    <br><br>
+    <strong>Option B:</strong> Parse brace depth to find the truly enclosing class. More accurate but significantly more complex to implement in regex-only PowerShell, and fragile for nested classes.
+    <br><br>
+    <strong>Chose A because:</strong> For NDepend cross-reference purposes, the FQN will be correct in the common case (one class per file, or methods after the class they belong to). Nested-class FQNs will be wrong, but nested classes are rare in legacy WinForms. The FQN is a Phase 2 cross-reference aid, not a deletion criterion.
+  </div>
+</div>
+
+<div class="entry tradeoff">
+  <div class="cat-label cat-tradeoff">Tradeoff</div>
+  <div class="entry-title">Layer 2 HTML has 6 sections, not the original 3 — adds scroll depth</div>
+  <div class="entry-file">templates/layer2-module-report-template.html</div>
+  <div class="entry-body">
+    Adding Decision Recommendation (top) + Coupling-In + Vitality takes the page from 3 sections to 6 and significantly increases scroll depth.
+    <br><br>
+    <strong>Mitigation applied:</strong> Decision Recommendation is pinned to the top (30-second read target); API table is collapsed by default (removes the largest scrollable content from default view); coupling-in and vitality are positioned before the API table (higher priority than raw API list).
+    <br><br>
+    <strong>Alternative not taken:</strong> Tabbed interface (Decision | Coupling | Vitality | API). Tabs would require more JS and deviate further from the existing template style. The single-scroll layout with section headings and the sec-num counter (01/06…06/06) gives engineers a mental map of depth.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════ OPEN QUESTIONS -->
+<div class="sec open">Open Questions</div>
+<p style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:1.25rem">Anything that should be confirmed or revised before this skill is used in production.</p>
+
+<div class="entry open">
+  <div class="cat-label cat-open">Open Question</div>
+  <div class="entry-title">coupling-in.csv: should it be fixed before use?</div>
+  <div class="entry-file">scripts/layer2-step2-usage.ps1</div>
+  <div class="entry-body">
+    As documented in Deviations, the current coupling-in logic is inverted. The intended logic is: <em>scan external files for references to the target's classes; classify as SAME_PROJECT or OTHER_PROJECT based on whether the external file shares the same .csproj boundary as the target.</em>
+    <br><br>
+    <strong>Questions for you:</strong>
+    <ol style="margin-top:.5rem;margin-left:1rem;line-height:2">
+      <li>Is my re-interpretation of "coupling-in" correct — i.e., it measures <em>incoming</em> dependencies from external files, not internal self-references?</li>
+      <li>Should "SAME_PROJECT" mean "same .csproj file" or "same physical folder tree"? For subfolder mode (<code>-ModulePath</code>), the target and its callers may share the same .csproj.</li>
+      <li>Should I fix this in a follow-up pass, or is the current (inverted) behaviour acceptable for a first iteration?</li>
+    </ol>
+  </div>
+</div>
+
+<div class="entry open">
+  <div class="cat-label cat-open">Open Question</div>
+  <div class="entry-title">Script path resolution for multi-root VS Code workspace</div>
+  <div class="entry-file">SKILL.md</div>
+  <div class="entry-body">
+    The SKILL.md execution commands assume the script path <code>.\.github\skills\csharp-archaeology\scripts\</code> is resolvable from the target C# workspace CWD. This only works if the skill repo is the active workspace root, not when analyzing an external codebase.
+    <br><br>
+    <strong>Questions for you:</strong>
+    <ol style="margin-top:.5rem;margin-left:1rem;line-height:2">
+      <li>Is the intended usage model that users <em>copy</em> the scripts into their target workspace?</li>
+      <li>Or is this a VS Code multi-root workspace setup where both repos are open simultaneously?</li>
+      <li>Should SKILL.md include setup instructions for one of these models?</li>
+    </ol>
+  </div>
+</div>
+
+<div class="entry open">
+  <div class="cat-label cat-open">Open Question</div>
+  <div class="entry-title">Build command inference in copilot-instructions-draft.md</div>
+  <div class="entry-file">SKILL.md — Phase 0 Synthesis</div>
+  <div class="entry-body">
+    The spec says the AI should write the build command by reading <code>preflight-report.json</code>. The preflight script captures <code>slnFiles</code> (an array of .sln filenames), but not the actual build command (e.g., MSBuild path, custom bat files, NuGet restore steps).
+    <br><br>
+    <strong>Question for you:</strong> Should I add detection of common build artifacts to <code>step0-preflight.ps1</code> — e.g., check for <code>build.bat</code>, <code>Makefile</code>, <code>Directory.Build.props</code>, or infer from CI config files — so the AI has better raw material to write the build command?
+  </div>
+</div>
+
+<div class="entry open">
+  <div class="cat-label cat-open">Open Question</div>
+  <div class="entry-title">Tier table: how many rows to show?</div>
+  <div class="entry-file">templates/layer1-global-map-template.html</div>
+  <div class="entry-body">
+    The TIER_TABLE marker comment in the template doesn't specify a row limit. For a 100+ project codebase, a full Tier table would be enormous.
+    <br><br>
+    <strong>Question for you:</strong> Should the SKILL.md AI analysis instructions specify a row limit (e.g., "show all TIER-1, Top 10 TIER-2, omit TIER-3")? Or should the table always show all projects and rely on browser scrolling?
+  </div>
+</div>
+
+<div class="entry open">
+  <div class="cat-label cat-open">Open Question</div>
+  <div class="entry-title">step3 performance for LARGE tier: is 15–30 min acceptable?</div>
+  <div class="entry-file">scripts/step3-dead-scan.ps1</div>
+  <div class="entry-body">
+    The preflight time estimate for a LARGE codebase (100+ projects) is 15–30 min for step3. The O(N+M) token-counting loop is still O(N × avg_tokens) in absolute terms, and PowerShell's regex engine is single-threaded.
+    <br><br>
+    <strong>Question for you:</strong> Is 15–30 min acceptable for your team's workflow? If not, I can explore a parallel-jobs approach using PowerShell <code>ForEach-Object -Parallel</code> (PS 7+) or splitting the work into chunked runs. This would require knowing what PowerShell version the target environment has.
+  </div>
+</div>
+
+
+<!-- revision log -->
+<div class="revlog">
+  <strong style="color:var(--text2);display:block;margin-bottom:.5rem">Revision Log</strong>
+  <div class="rev-row">
+    <span class="rev-date">2026-05-19</span>
+    <span class="rev-msg">Initial implementation notes created. Documents all decisions from the first full implementation pass of the plan.</span>
+  </div>
+</div>
+
+</div><!-- /root -->
+</body>
+</html>

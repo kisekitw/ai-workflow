@@ -1,6 +1,6 @@
 # step2-git-stability.ps1
 # Phase 0 Layer 1 — 分析各專案 Git 活躍度
-# 輸出：docs/archaeology/tmp/git-stability.csv
+# 輸出：.analysis/tmp/git-stability.csv
 #
 # 說明：
 #   ACTIVE  = 近兩年有 10 次以上 commit（持續維護中）
@@ -35,8 +35,9 @@ $report = foreach ($proj in $allProjects) {
   }
 }
 
+New-Item -ItemType Directory -Force -Path ".analysis/tmp" | Out-Null
 $report | Sort-Object 近兩年Commits |
-  Export-Csv "docs/archaeology/tmp/git-stability.csv" -NoTypeInformation -Encoding UTF8 -Force
+  Export-Csv ".analysis/tmp/git-stability.csv" -NoTypeInformation -Encoding UTF8 -Force
 
 Write-Host ""
 Write-Host "=== git-stability.csv 產出完成 ==="

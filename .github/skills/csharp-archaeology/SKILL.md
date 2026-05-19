@@ -3,7 +3,9 @@ name: csharp-archaeology
 description: >
   Phase 0 考古 Skill：針對大型 legacy C# WinForms codebase，在不依賴任何人記憶的
   情況下，讓程式碼自己說話。分兩層執行：Layer 1 產出全局依賴地圖與死碼候選清單；
-  Layer 2 針對指定模組深挖 public API 呼叫關係。同時產出兩個平行任務文件。
+  Layer 2 針對指定模組深挖 API 呼叫關係，輸出 Decision Recommendation（Delete /
+  Extract / Refactor / Leave alone）。同時產出 copilot-instructions-draft.md 與
+  parallel-tasks.md 供下游 Phase 1–5 使用。
   ALWAYS use this skill when user mentions "phase 0", "考古", "archaeology",
   "分析 codebase", "模組邊界", "找死碼", "開始重構前的分析", 或 "建立依賴地圖"。
 ---
@@ -12,13 +14,19 @@ description: >
 
 ## 設計原則
 
-**每個步驟都先寫成 `.ps1` 檔案，再執行。絕不把 script 壓成一行丟進 terminal。**
+**原則 A：SKILL.md 零程式碼**
+所有 PowerShell 邏輯住在 `.github/skills/csharp-archaeology/scripts/` 獨立檔案中。
+SKILL.md 只包含說明、決策規則、步驟指令（呼叫哪個 script）、AI 分析指引。
 
-500 萬行 codebase 的正確做法：
-- 每個 Step 的 PowerShell script 先存成獨立 `.ps1` 檔案
-- 確認檔案寫入後再執行
-- AI 分批讀取輸出的 JSON/CSV 中間檔進行分析
-- 不使用 Sub-agent（experimental feature，不穩定）
+**原則 B：兩種輸出格式，目的不同**
+
+| 格式 | 目的 | 對象 |
+|------|------|------|
+| HTML 信息圖表 | 人讀：30 秒內看到關鍵決策與數字 | 工程師、Tech Lead |
+| JSON / CSV | 機器讀：後續 Phase 2/3/4 流程處理 | AI、NDepend、CI pipeline |
+
+**原則 C：所有輸出寫入 target workspace 根目錄下的 `.analysis/`**
+step0-preflight 第一步自動建立此資料夾並放置 `.gitignore`（`*`），避免產物被 commit。
 
 ---
 
@@ -26,288 +34,137 @@ description: >
 
 - 只處理 `.csproj`，跳過所有 `.vcxproj`（C++ 專案）
 - `*Ex.csproj` 結尾的 project：跳過分析其內部，但保留它作為被依賴關係
-- 死碼候選只涵蓋 `private` / `internal`，`public` 不標記（可能被 dll 外部引用）
+- 死碼候選只涵蓋 `private` / `internal`，`public` 不標記（可能被外部 dll 引用）
 
 ---
 
-## 前置確認（每次執行前必做）
+## 輸出資料夾結構
 
-執行以下指令，任何一項失敗就停下來告知 RD，不要繼續。
-
-```powershell
-# 確認 1：git 存在且有歷史
-git log --oneline -5
-
-# 確認 2：找到 .sln 檔案
-Get-ChildItem -Recurse -Filter "*.sln" | Select-Object FullName
-
-# 確認 3：確認 C# project 數量
-$projs = Get-ChildItem -Recurse -Filter "*.csproj" |
-  Where-Object { $_.Name -notmatch "Ex\.csproj$" }
-Write-Host "找到 $($projs.Count) 個 C# project（已排除 Ex 結尾與 vcxproj）"
-
-# 確認 4：建立輸出資料夾
-New-Item -ItemType Directory -Force -Path "docs/archaeology/tmp"
 ```
+{target-workspace}/.analysis/
+├── tmp/                              ← Layer 1 中間檔
+│   ├── preflight-report.json
+│   ├── dependency-map.json
+│   ├── git-stability.csv
+│   └── dead-candidates.csv
+├── 00-global-map.html                ← Layer 1 報告
+├── parallel-tasks.md                 ← 平行任務（Layer 2 後更新為具體 targets）
+├── copilot-instructions-draft.md     ← Phase 0 Synthesis（AI 直接寫入）
+└── {ModuleName}/                     ← 每個 Layer 2 模組一個資料夾
+    ├── {ModuleName}-api.json
+    ├── {ModuleName}-usage.csv
+    ├── {ModuleName}-coupling-in.csv
+    ├── {ModuleName}-vitality.csv
+    └── {ModuleName}-report.html
+```
+
+---
+
+## Layer 0.5 — Preflight
+
+**目的：** 評估 codebase 規模，建立 `.analysis/` 資料夾，提供時間預估。
+
+執行：
+```
+.\.github\skills\csharp-archaeology\scripts\step0-preflight.ps1
+```
+
+確認輸出：
+```
+.analysis/tmp/preflight-report.json 存在且非空
+```
+
+**AI 讀取 preflight-report.json，依 Complexity Tier 告知使用者預估時間：**
+
+| Tier | 條件 | Step 3 預估 | Layer 1 總計 |
+|------|------|------------|-------------|
+| SMALL | C# project < 30 | 1–2 min | 5–10 min |
+| MEDIUM | 30–99 | 5–10 min | 15–30 min |
+| LARGE | 100+ | 15–30 min | 45–90 min |
+
+詢問使用者確認後繼續執行 Layer 1。
 
 ---
 
 ## Layer 1 — 全局掃描
 
 > 目標：建立可信的依賴地圖、找出孤島模組、產出 private/internal 死碼候選。
-> 時間：約 10–20 分鐘。
-> 中間檔：三份 JSON/CSV → AI 分批讀取 → 產出 `docs/archaeology/00-global-map.html`
-
----
+> 前提：Layer 0.5 Preflight 已完成。
+> 中間檔輸出至 `.analysis/tmp/`；HTML 報告輸出至 `.analysis/00-global-map.html`。
 
 ### Step 1：建立依賴拓樸
 
-**先寫檔，再執行：**
-
+執行：
 ```
-將以下內容寫入 docs/archaeology/tmp/step1-dependency-map.ps1
-執行完成後再執行該檔案
+.\.github\skills\csharp-archaeology\scripts\step1-dependency-map.ps1
 ```
 
-```powershell
-# step1-dependency-map.ps1
-$ErrorActionPreference = 'Stop'
-$root = (Get-Location).Path
-
-$allProjects = Get-ChildItem -Recurse -Filter "*.csproj" |
-  Where-Object { $_.Name -notmatch "Ex\.csproj$" -and $_.Extension -eq ".csproj" }
-
-Write-Host "掃描 $($allProjects.Count) 個 C# project..."
-
-$dependencyMap = @{}
-foreach ($proj in $allProjects) {
-  $projName = [System.IO.Path]::GetFileNameWithoutExtension($proj.Name)
-  try {
-    [xml]$xml = Get-Content $proj.FullName -Encoding UTF8
-    $refs = $xml.SelectNodes("//ProjectReference/@Include") |
-      ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Value) }
-    $dependencyMap[$projName] = @($refs)
-  } catch {
-    Write-Warning "無法解析：$($proj.Name)"
-    $dependencyMap[$projName] = @()
-  }
-}
-
-$allReferenced = $dependencyMap.Values | ForEach-Object { $_ } | Sort-Object -Unique
-$islands       = $dependencyMap.Keys  | Where-Object { $_ -notin $allReferenced }
-
-$hubScore = @{}
-foreach ($refs in $dependencyMap.Values) {
-  foreach ($r in $refs) {
-    if ($hubScore[$r]) { $hubScore[$r]++ } else { $hubScore[$r] = 1 }
-  }
-}
-
-$output = @{
-  totalProjects = $allProjects.Count
-  islands       = @($islands)
-  hubs          = @($hubScore.GetEnumerator() |
-                    Sort-Object Value -Descending | Select-Object -First 30 |
-                    ForEach-Object { @{ name=$_.Key; count=$_.Value } })
-  dependencyMap = $dependencyMap
-}
-
-$output | ConvertTo-Json -Depth 5 |
-  Out-File "docs/archaeology/tmp/dependency-map.json" -Encoding UTF8 -Force
-
-Write-Host "dependency-map.json 產出完成"
-Write-Host "孤島模組：$($islands.Count) 個"
-Write-Host "樞紐 Top 3：$(($output.hubs | Select-Object -First 3 | ForEach-Object { "$($_.name)($($_.count))" }) -join ', ')"
+確認輸出：
+```
+.analysis/tmp/dependency-map.json 存在且非空
 ```
 
-**執行：**
-```powershell
-.\docs\archaeology\tmp\step1-dependency-map.ps1
+### Step 2：Git 活躍度
+
+執行：
+```
+.\.github\skills\csharp-archaeology\scripts\step2-git-stability.ps1
 ```
 
----
-
-### Step 2：Git 穩定度
-
-**先寫檔，再執行：**
-
+確認輸出：
 ```
-將以下內容寫入 docs/archaeology/tmp/step2-git-stability.ps1
-執行完成後再執行該檔案
+.analysis/tmp/git-stability.csv 存在且非空
 ```
-
-```powershell
-# step2-git-stability.ps1
-$ErrorActionPreference = 'Stop'
-
-$allProjects = Get-ChildItem -Recurse -Filter "*.csproj" |
-  Where-Object { $_.Name -notmatch "Ex\.csproj$" }
-
-Write-Host "分析 $($allProjects.Count) 個 project 的 git 活躍度..."
-
-$report = foreach ($proj in $allProjects) {
-  $folder    = $proj.DirectoryName
-  $projName  = [System.IO.Path]::GetFileNameWithoutExtension($proj.Name)
-
-  $commits2y  = (git log --since="2 years ago" --oneline -- "$folder" 2>$null |
-                 Measure-Object -Line).Lines
-  $lastCommit = git log -1 --format="%ad" --date=short -- "$folder" 2>$null
-
-  [PSCustomObject]@{
-    Module     = $projName
-    Commits2yr = $commits2y
-    LastCommit = if ($lastCommit) { $lastCommit } else { "N/A" }
-    Status     = if ($commits2y -eq 0) { "FROZEN" }
-                 elseif ($commits2y -lt 10) { "STALE" }
-                 else { "ACTIVE" }
-  }
-}
-
-$report | Sort-Object Commits2yr |
-  Export-Csv "docs/archaeology/tmp/git-stability.csv" -NoTypeInformation -Encoding UTF8 -Force
-
-Write-Host "git-stability.csv 產出完成"
-Write-Host "FROZEN（2年零 commit）：$(($report | Where-Object Status -eq 'FROZEN').Count) 個"
-Write-Host "STALE（少於 10 commits）：$(($report | Where-Object Status -eq 'STALE').Count) 個"
-Write-Host "ACTIVE：$(($report | Where-Object Status -eq 'ACTIVE').Count) 個"
-```
-
-**執行：**
-```powershell
-.\docs\archaeology\tmp\step2-git-stability.ps1
-```
-
----
 
 ### Step 3：Private/Internal 死碼掃描
 
-**先寫檔，再執行：**
-
+執行：
 ```
-將以下內容寫入 docs/archaeology/tmp/step3-dead-scan.ps1
-執行完成後再執行該檔案
+.\.github\skills\csharp-archaeology\scripts\step3-dead-scan.ps1
 ```
 
-```powershell
-# step3-dead-scan.ps1
-$ErrorActionPreference = 'Stop'
-$root = (Get-Location).Path
-
-# 取得所有 Ex.csproj 的資料夾（排除這些資料夾內的 .cs 檔案）
-$exProjDirs = Get-ChildItem -Recurse -Filter '*Ex.csproj' |
-  ForEach-Object { $_.DirectoryName }
-
-$allCsFiles = Get-ChildItem -Recurse -Filter "*.cs" | Where-Object {
-  $_.FullName -notmatch '\\obj\\' -and
-  $_.FullName -notmatch '\\bin\\' -and
-  $_.Length -gt 0
-}
-
-# 排除 Ex 資料夾內的檔案
-$filteredFiles = $allCsFiles | Where-Object {
-  $filePath = $_.FullName
-  $skip = $false
-  foreach ($exDir in $exProjDirs) {
-    if ($filePath.StartsWith($exDir)) { $skip = $true; break }
-  }
-  -not $skip
-}
-
-Write-Host "掃描 $($filteredFiles.Count) 個 .cs 檔案..."
-
-$skipPattern   = '^(InitializeComponent|Dispose|get_|set_|add_|remove_|On[A-Z])'
-$methodPattern = '(?:private|internal)\s+(?:static\s+)?(?:\w+[\[\]?]*\s+)+(\w+)\s*\('
-
-# 第一步：收集所有 method 定義
-$fileMethods = [System.Collections.Generic.List[PSCustomObject]]::new()
-foreach ($f in $filteredFiles) {
-  $content = Get-Content $f.FullName -Raw -Encoding UTF8
-  foreach ($m in [regex]::Matches($content, $methodPattern)) {
-    $name = $m.Groups[1].Value
-    if ($name -match $skipPattern) { continue }
-    $line = ($content.Substring(0, $m.Index) -split "`n").Count
-    $fileMethods.Add([PSCustomObject]@{
-      Method = $name
-      File   = $f.FullName
-      Line   = $line
-    })
-  }
-}
-
-Write-Host "找到 $($fileMethods.Count) 個 private/internal method，開始交叉搜尋呼叫者..."
-
-# 第二步：建立全域 token 計數（避免重複 grep 同名 method）
-$globalTokenCount = @{}
-foreach ($f in $filteredFiles) {
-  $content = Get-Content $f.FullName -Raw -Encoding UTF8
-  foreach ($entry in $fileMethods) {
-    $name = $entry.Method
-    if (-not $globalTokenCount.ContainsKey($name)) {
-      $globalTokenCount[$name] = 0
-    }
-    $selfCount = ([regex]::Matches($content, "\b$([regex]::Escape($name))\b")).Count
-    $globalTokenCount[$name] += $selfCount
-  }
-}
-
-# 第三步：找出呼叫者為 0 的 method
-$deadCandidates = [System.Collections.Generic.List[PSCustomObject]]::new()
-foreach ($entry in $fileMethods) {
-  $name        = $entry.Method
-  $fileContent = Get-Content $entry.File -Raw -Encoding UTF8
-  $selfCount   = ([regex]::Matches($fileContent, "\b$([regex]::Escape($name))\b")).Count
-  $totalCount  = if ($globalTokenCount.ContainsKey($name)) { $globalTokenCount[$name] } else { 0 }
-  $callers     = [Math]::Max(0, $totalCount - $selfCount)
-
-  if ($callers -eq 0) {
-    $rel = $entry.File.Replace($root, '')
-    $deadCandidates.Add([PSCustomObject]@{
-      Method = $name
-      File   = $rel
-      Line   = $entry.Line
-    })
-  }
-}
-
-$deadCandidates |
-  Export-Csv 'docs/archaeology/tmp/dead-candidates.csv' -NoTypeInformation -Encoding UTF8 -Force
-
-Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候選"
+確認輸出：
+```
+.analysis/tmp/dead-candidates.csv 存在且非空
 ```
 
-**執行：**
-```powershell
-.\docs\archaeology\tmp\step3-dead-scan.ps1
-```
+> **提醒：** Step 3 是最慢的步驟。依 Complexity Tier 預估時間後告知使用者，請耐心等候。
 
 ---
 
 ### Layer 1 AI 分析流程
 
-三份中間檔產出後，AI 依序執行：
+三份中間檔產出後，依序執行：
 
-```
-1. 讀 dependency-map.json
-   → 樞紐模組 Top 15 + 孤島模組清單
-   → 交叉標記：孤島 + FROZEN = 最強刪除候選
+1. 讀 `.analysis/tmp/dependency-map.json`
+   - 樞紐模組 Top 15（hubScore）+ 孤島模組清單（islands）
 
-2. 讀 git-stability.csv
-   → 每個模組標注 ACTIVE / STALE / FROZEN
-   → 補充孤島模組穩定度訊號
+2. 讀 `.analysis/tmp/git-stability.csv`
+   - 每個模組標注 ACTIVE / STALE / FROZEN
 
-3. 分批讀 dead-candidates.csv（TOP 50，優先孤島模組）
-   → 標注信心度
+3. 讀 `.analysis/tmp/dead-candidates.csv`（Top 50，優先孤島模組）
+   - 列出 HIGH Confidence 候選（Confidence=HIGH 且無 RiskFlags）
 
-4. 綜合三份資料產出行動建議
-   → 建議 Layer 2 深挖的模組
-   → 刪除候選（待平行任務確認）
-   → 監控但不先動
-```
+4. 計算 Tier，產出 Tier 交叉訊號表
+
+**Tier 計算規則（明確，不自由發揮）：**
+
+| Tier | 判斷條件 |
+|------|---------|
+| TIER-1（刪除候選）| `islands` 中 AND (FROZEN 或 STALE) AND dead-candidates.csv 中有對應模組的項目 |
+| TIER-2（Layer 2 優先）| 高 hubScore OR dead count 多 OR STALE 但有呼叫者 |
+| TIER-3（觀察）| ACTIVE 且 dead count 少 |
+
+5. 選出 Top 3 Layer 2 深挖候選（含一句理由）
+
+6. 記錄初步 No-go zones（TIER-2 Hub 模組 + 已知高 coupling 模組）→ 供 Phase 0 Synthesis 使用
+
+---
 
 ### Layer 1 最終輸出
 
 讀取 `.github/skills/csharp-archaeology/templates/layer1-global-map-template.html`，
-依下表填入 placeholder，寫出至 `docs/archaeology/00-global-map.html`。
+填入 placeholder，寫出至 `.analysis/00-global-map.html`。
 
 **純量 placeholder：**
 
@@ -316,174 +173,211 @@ Write-Host "dead-candidates.csv 產出完成：$($deadCandidates.Count) 個候�
 | `{{DATE}}` | 執行當天日期（YYYY-MM-DD） |
 | `{{SOLUTION_NAME}}` | 找到的 .sln 檔名（不含路徑） |
 | `{{PROJECT_COUNT}}` | 分析 project 總數 |
-| `{{ISLAND_COUNT}}` | 孤島模組數（dependency-map.json） |
-| `{{STALE_COUNT}}` | FROZEN + STALE 模組數（git-stability.csv） |
+| `{{ISLAND_COUNT}}` | 孤島模組數 |
+| `{{STALE_COUNT}}` | FROZEN + STALE 模組數 |
 | `{{DEAD_COUNT}}` | dead-candidates.csv 總列數 |
 
-**資料區段 marker：** 把 marker 行替換為從 CSV/JSON 產生的 HTML 列（格式見模板內 HTML comment）。
+**資料區段 marker：**
 
 | Marker | 資料來源 |
 |--------|---------|
 | `<!-- ##HUB_ROWS## -->` | dependency-map.json .hubs Top 15 |
 | `<!-- ##ISLAND_CARDS## -->` | dependency-map.json .islands × git-stability.csv |
 | `<!-- ##GIT_ROWS## -->` | git-stability.csv 全部 |
+| `<!-- ##TIER_TABLE## -->` | AI 計算的 Tier 交叉訊號表（Module \| Git Status \| Dead Count \| Tier）|
 | `<!-- ##DEAD_ROWS## -->` | dead-candidates.csv Top 50 |
-| `<!-- ##PRIORITY_ITEMS## -->` | AI 綜合分析建議 |
+| `<!-- ##LAYER2_CANDIDATES## -->` | Top 3 Layer 2 推薦模組卡片（含一行理由） |
+| `<!-- ##PHASE_HANDOFFS## -->` | Phase 0 交付 artifacts 簡表 |
+
+**Layer 1 完成後，同時產出 `.analysis/parallel-tasks.md` 第一版（模組名稱暫填候選）。**
 
 ---
 
 ## Layer 2 — 模組深挖
 
-> 目標：了解指定模組的 public API 在 solution 內的呼叫關係。
+> 目標：了解指定模組的 API 使用關係，產出 Decision Recommendation。
 > 前提：Layer 1 已完成。
-> 觸發：RD 指定模組名稱，例如「深挖 HMIWafermap」。
+> 觸發：RD 指定模組名稱，例如「深挖 HMIWaferMap」。
 > 時間：每個模組約 5–10 分鐘。
-> 輸出：`docs/archaeology/[ModuleName]-report.html`
+
+### Layer 2 範圍決策（執行前判斷）
+
+AI 在執行 Layer 2 前先判斷分析粒度：
+
+- 若目標 project 有子資料夾 > 300 LOC 且名稱含 `Pane / Manager / Service / Handler / Helper` → 建議使用 `-ModulePath` 子資料夾模式
+- 否則使用 `-ModuleName` project 模式
 
 ### Step 1：找出 Public API
 
-**先寫檔，再執行：**
-
+**Project 模式：**
 ```
-將以下內容寫入 docs/archaeology/tmp/layer2-step1-api.ps1
-執行完成後再執行該檔案
+.\.github\skills\csharp-archaeology\scripts\layer2-step1-api.ps1 -ModuleName "HMIWaferMap"
 ```
 
-```powershell
-# layer2-step1-api.ps1
-param([string]$ModuleName)
-$ErrorActionPreference = 'Stop'
-
-$moduleFolder = Get-ChildItem -Recurse -Filter "$ModuleName.csproj" |
-  Where-Object { $_.Name -notmatch "Ex\.csproj$" } |
-  Select-Object -First 1 -ExpandProperty DirectoryName
-
-if (-not $moduleFolder) {
-  Write-Error "找不到 $ModuleName.csproj，請確認模組名稱"
-  exit 1
-}
-
-Write-Host "分析模組：$ModuleName（$moduleFolder）"
-
-$csFiles  = Get-ChildItem -Path $moduleFolder -Recurse -Filter "*.cs" |
-  Where-Object { $_.FullName -notmatch '\\obj\\' }
-
-$publicApi = [System.Collections.Generic.List[PSCustomObject]]::new()
-foreach ($file in $csFiles) {
-  $content = Get-Content $file.FullName -Raw -Encoding UTF8
-  [regex]::Matches($content, 'public\s+(?:partial\s+)?class\s+(\w+)') |
-    ForEach-Object {
-      $publicApi.Add([PSCustomObject]@{ Type="class"; Name=$_.Groups[1].Value; File=$file.Name })
-    }
-  [regex]::Matches($content, 'public\s+(?:static\s+|virtual\s+|override\s+)?(?:\w+[\[\]?]*\s+)+(\w+)\s*\(') |
-    ForEach-Object {
-      $publicApi.Add([PSCustomObject]@{ Type="method"; Name=$_.Groups[1].Value; File=$file.Name })
-    }
-}
-
-$publicApi | ConvertTo-Json |
-  Out-File "docs/archaeology/tmp/$ModuleName-api.json" -Encoding UTF8 -Force
-
-Write-Host "找到 $($publicApi.Count) 個 public API → $ModuleName-api.json"
+**Subfolder 模式：**
+```
+.\.github\skills\csharp-archaeology\scripts\layer2-step1-api.ps1 -ModulePath "HMIWaferMap/HMIWaferMapPane"
 ```
 
-**執行：**
-```powershell
-.\docs\archaeology\tmp\layer2-step1-api.ps1 -ModuleName "HMIWafermap"
+確認輸出：
+```
+.analysis/{ModuleName}/{ModuleName}-api.json 存在且非空
 ```
 
-### Step 2：搜尋呼叫者
+### Step 2：搜尋呼叫者與 coupling 資料
 
-**先寫檔，再執行：**
-
+**Project 模式：**
 ```
-將以下內容寫入 docs/archaeology/tmp/layer2-step2-usage.ps1
-執行完成後再執行該檔案
+.\.github\skills\csharp-archaeology\scripts\layer2-step2-usage.ps1 -ModuleName "HMIWaferMap"
 ```
 
-```powershell
-# layer2-step2-usage.ps1
-param([string]$ModuleName)
-$ErrorActionPreference = 'Stop'
-
-$moduleFolder = Get-ChildItem -Recurse -Filter "$ModuleName.csproj" |
-  Where-Object { $_.Name -notmatch "Ex\.csproj$" } |
-  Select-Object -First 1 -ExpandProperty DirectoryName
-
-$apiJson  = Get-Content "docs/archaeology/tmp/$ModuleName-api.json" -Raw | ConvertFrom-Json
-$allCsFiles = Get-ChildItem -Recurse -Filter "*.cs" | Where-Object {
-  $_.FullName -notmatch '\\obj\\' -and
-  $_.FullName -notmatch '\\bin\\' -and
-  $_.FullName -notmatch $moduleFolder
-}
-
-Write-Host "搜尋 $($apiJson.Count) 個 API 在 $($allCsFiles.Count) 個檔案中的呼叫者..."
-
-$usageReport = foreach ($api in $apiJson) {
-  $callers = $allCsFiles |
-    Select-String -Pattern "\b$([regex]::Escape($api.Name))\b" -SimpleMatch |
-    Select-Object -ExpandProperty Path | Sort-Object -Unique
-
-  [PSCustomObject]@{
-    API         = $api.Name
-    Type        = $api.Type
-    CallerCount = $callers.Count
-    Callers     = ($callers | ForEach-Object { Split-Path $_ -Leaf }) -join "; "
-  }
-}
-
-$usageReport | Sort-Object CallerCount |
-  Export-Csv "docs/archaeology/tmp/$ModuleName-usage.csv" -NoTypeInformation -Encoding UTF8 -Force
-
-Write-Host "$ModuleName-usage.csv 產出完成"
-Write-Host "Solution 內零呼叫：$(($usageReport | Where-Object CallerCount -eq 0).Count) 個"
+**Subfolder 模式：**
+```
+.\.github\skills\csharp-archaeology\scripts\layer2-step2-usage.ps1 -ModulePath "HMIWaferMap/HMIWaferMapPane"
 ```
 
-**執行：**
-```powershell
-.\docs\archaeology\tmp\layer2-step2-usage.ps1 -ModuleName "HMIWafermap"
+確認輸出：
 ```
+.analysis/{ModuleName}/{ModuleName}-usage.csv 存在且非空
+.analysis/{ModuleName}/{ModuleName}-coupling-in.csv 存在
+.analysis/{ModuleName}/{ModuleName}-vitality.csv 存在
+```
+
+---
+
+### Layer 2 AI 分析流程
+
+讀取四份輸出後，依以下決策矩陣判斷：
+
+| 決策 | 關鍵訊號 |
+|------|---------|
+| **Delete** | 零 TotalExternalCallSites AND TestCallerCount=0 AND FROZEN git AND 無 HIGH RiskFlags |
+| **Extract** | 低 TotalExternalCallSites AND SAME_PROJECT coupling-in 少 AND 明確 Namespace 邊界 |
+| **Refactor** | TestCallerCount > 0（有安全網）AND 無循環依賴 |
+| **Leave alone** | 高 TopCallerSites（爆炸半徑大）OR ACTIVE 且多個 callers |
+
+---
 
 ### Layer 2 最終輸出
 
-讀取 `.github/skills/csharp-archaeology/templates/layer2-module-report-template.html`，
-填入 placeholder，寫出至 `docs/archaeology/{{MODULE_NAME}}-report.html`。
+#### 在 chat 顯示 Decision Recommendation：
 
-**純量 placeholder：** `{{MODULE_NAME}}`, `{{API_COUNT}}`, `{{HAS_CALLERS}}`, `{{ZERO_CALLERS}}`, `{{UPSTREAM_COUNT}}`, `{{DOWNSTREAM_COUNT}}`, `{{DATE}}`
+```
+## Decision Recommendation
+
+**Target:** {名稱}
+**Recommended Action:** Delete / Extract / Refactor / Leave alone
+**Confidence:** HIGH / MEDIUM / LOW
+
+**三行 Evidence：**
+- Coupling Out: {TotalExternalCallSites} 個呼叫點 / {TotalCallerProjects} 個 projects；最深：{TopCallerProject}（{TopCallerSites} 點）
+- Dead Surface: {X}/{Total} API 零呼叫；Vitality：最後 commit {日期}，近 2 年 {N} commits
+- Safety Net: {TestCallerCount} 個測試呼叫；Coupling In: {N} SAME_PROJECT 阻斷器
+
+**前置條件（若有）：** {條件清單}
+**建議第一步：** {一個具體動作}
+```
+
+#### 寫出 HTML 報告：
+
+讀取 `.github/skills/csharp-archaeology/templates/layer2-module-report-template.html`，
+填入 placeholder，寫出至 `.analysis/{ModuleName}/{ModuleName}-report.html`。
+
+**純量 placeholder：**
+
+| Token | 值 |
+|-------|---|
+| `{{MODULE_NAME}}` | 目標名稱 |
+| `{{DATE}}` | 執行當天日期 |
+| `{{API_COUNT}}` | api.json 總項目數 |
+| `{{HAS_CALLERS}}` | TotalExternalCallSites > 0 的 API 數 |
+| `{{ZERO_CALLERS}}` | ZeroCaller=true 的 API 數 |
+| `{{UPSTREAM_COUNT}}` | 此模組引用的 project 數（dependency-map.json） |
+| `{{DOWNSTREAM_COUNT}}` | 引用此模組的 project 數 |
+| `{{DECISION}}` | Delete / Extract / Refactor / Leave alone |
+| `{{CONFIDENCE}}` | HIGH / MEDIUM / LOW |
+| `{{EVIDENCE_COUPLING}}` | 三行 Evidence 第一行 |
+| `{{EVIDENCE_DEAD}}` | 三行 Evidence 第二行 |
+| `{{EVIDENCE_SAFETY}}` | 三行 Evidence 第三行 |
+| `{{TEST_CALLER_COUNT}}` | TestCallerCount 合計 |
 
 **資料區段 marker：**
 
 | Marker | 資料來源 |
 |--------|---------|
+| `<!-- ##DECISION_RECOMMENDATION## -->` | Decision 卡片（色碼：Delete=coral，Extract=sky，Refactor=amber，Leave=green） |
 | `<!-- ##UPSTREAM_ITEMS## -->` | dependency-map.json（此模組的 ProjectReference） |
 | `<!-- ##DOWNSTREAM_ITEMS## -->` | dependency-map.json（誰依賴此模組） |
-| `<!-- ##API_ROWS## -->` | `{ModuleName}-usage.csv` |
-| `<!-- ##HEATMAP_CELLS## -->` | `{ModuleName}-usage.csv` 彙總至 project |
+| `<!-- ##TEST_SIGNAL## -->` | TestCallerCount KPI（安全網訊號） |
+| `<!-- ##COUPLING_IN_ROWS## -->` | coupling-in.csv（SAME_PROJECT 行標紅） |
+| `<!-- ##VITALITY_ROWS## -->` | vitality.csv 每個檔案活躍度熱力條 |
+| `<!-- ##API_ROWS## -->` | usage.csv 全部 API（預設收合，點擊展開） |
+| `<!-- ##HEATMAP_CELLS## -->` | usage.csv 彙總至 project（Top 10） |
 
 ---
 
-## 平行任務文件
+## Phase 0 Synthesis（所有建議 Layer 2 完成後）
 
-Layer 1 完成後自動產出 `docs/archaeology/parallel-tasks.md`，由 Tech Lead 安排，不由 Skill 執行。
+**此步驟無 script，AI 讀取已有 artifacts，直接寫入以下兩個檔案。**
+
+### 產出 `.analysis/copilot-instructions-draft.md`
+
+AI 讀取來源：
+1. `.analysis/tmp/preflight-report.json` → .sln 路徑、target framework、build 指令
+2. `.analysis/tmp/dependency-map.json` → 所有 project 正確名稱（模組詞彙表）
+3. Layer 1 分析時記錄的 No-go zones（TIER-2 Hub + 高 TopCallerSites 模組）
+
+寫入格式：
+```markdown
+## 專案簡介
+{待補充 2 句，描述這個 codebase 是做什麼的}
+
+## Build 指令
+{從 preflight-report.json 的 slnFiles 推導，例如：dotnet build {sln}}
+
+## 語言版本
+{target framework，例如：net472 = C# 7.3，net6.0 = C# 10}
+
+## No-go zones（AI 禁止建議重構的區域）
+{自動列出 TIER-2 Hub 模組 + Layer 2 高 TopCallerSites 模組，附理由}
+
+## 模組詞彙表（所有 C# project 名稱，保持原始大小寫）
+{所有 project 正確名稱，一行一個}
+```
+
+### 更新 `.analysis/parallel-tasks.md` 為具體 targets
 
 ```markdown
-# 平行任務清單 — [DATE]
+# 平行任務清單 — {DATE}
 
-## Task A：掃描 cb8/cb9/ure 找 dll 引用
-目的：確認 public API 是否被外部 repo 透過 dll 直接引用。
-步驟：
-1. Clone cb8、cb9、ure
-2. 搜尋 .csproj 是否引用我們的模組名稱
-3. 搜尋 packages/ lib/ 是否有我們的 .dll
-4. 結果回填至對應 [ModuleName]-report.html
+## Task A：確認外部 dll 引用
+目的：確認 TIER-1 模組的 public API 是否被外部 repo 引用。
+具體模組：{來自 TIER-1 + TIER-2 的模組名稱清單}
+步驟：Clone cb8/cb9/ure → 搜尋 .csproj 與 packages/ 是否有我們的 .dll
 預計工作量：1–2 天
 
 ## Task B：Runtime Telemetry 佈建
-目的：透過執行期 log 確認哪些功能真正被使用者觸發。
-步驟：
-1. 每個主要 Form 進入點加入結構化 log
-2. 部署至 staging 環境
-3. 收集至少 3 個月（涵蓋季結、年結）
-4. 從未出現的 log 項目標記為死碼候選
+目的：確認哪些 Form 功能真正被使用者觸發。
+具體 Form 類別：{來自 Layer 2 api.json 中 BaseClass 含 Form 的類別清單}
+步驟：在每個主要 Form 進入點加入結構化 log，部署至 staging，收集 3 個月
 預計工作量：佈建 1 週，等待資料 3–6 個月
 ```
+
+---
+
+## 完成標準
+
+### Layer 1 完成：
+- [ ] `.analysis/tmp/` 下三份中間檔存在且非空
+- [ ] `.analysis/00-global-map.html` 含 Tier 表與 Top 3 候選
+- [ ] `.analysis/parallel-tasks.md` 第一版產出（候選模組）
+
+### Layer 2（每個模組）完成：
+- [ ] 四份 CSV/JSON 存在於 `.analysis/{Module}/`
+- [ ] `.analysis/{Module}/{Module}-report.html` 置頂顯示 Decision Recommendation
+
+### Phase 0 整體完成：
+- [ ] Top 3 Layer 2 候選全部完成
+- [ ] `.analysis/copilot-instructions-draft.md` 產出（含 No-go zones + 模組詞彙表）
+- [ ] `.analysis/parallel-tasks.md` 更新為具體模組名稱與 Form 類別
+- [ ] 至少一個 Strangler Fig Pilot 確認（Decision = Extract，Confidence = HIGH 或 MEDIUM）
