@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{SOLUTION_NAME}} — Layer 1 全局地圖</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{
   --bg:        #F4F5FB;
@@ -28,63 +29,95 @@
   --mono:    'DM Mono', monospace;
   --display: 'Syne', sans-serif;
   --body:    'DM Sans', sans-serif;
+  --sidebar-w: 240px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{background:var(--bg)}
-body{
-  font-family:var(--body);
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  overflow-x:hidden;
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── Sidebar ── */
+.sidebar{
+  position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;
+  overflow-y:auto;background:var(--surface);
+  border-right:1px solid var(--border);
+  box-shadow:2px 0 12px rgba(0,0,0,.05);
+  display:flex;flex-direction:column;z-index:100;
 }
+.sidebar-header{padding:1.25rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.sidebar-brand{font-family:var(--display);font-size:13px;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sidebar-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+.nav-groups{flex:1;overflow-y:auto;padding:.5rem 0}
+.nav-group-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:.5rem 1rem .25rem}
+.nav-link{
+  display:block;font-family:var(--mono);font-size:11px;color:var(--text2);
+  text-decoration:none;padding:.32rem 1rem .32rem 1.5rem;
+  border-left:2px solid transparent;
+  transition:color .15s,background .15s,border-color .15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-link:hover{color:var(--text);background:var(--bg)}
+.nav-link.active{color:var(--orange);border-left-color:var(--orange);background:var(--orange-bg)}
+.nav-divider{height:1px;background:var(--border);margin:.5rem 1rem}
+.sidebar-footer{padding:.75rem 1rem;border-top:1px solid var(--border);flex-shrink:0}
+.sidebar-footer-txt{font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.6}
+
+/* ── Mobile tabs ── */
+.mobile-tabs{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 1rem;height:48px;align-items:center;gap:6px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.mobile-tab{
+  font-family:var(--mono);font-size:12px;color:var(--text2);
+  padding:6px 14px;border-radius:20px;text-decoration:none;
+  transition:color .15s,background .15s;border:1px solid transparent;
+}
+.mobile-tab.active{color:var(--orange);background:var(--orange-bg);border-color:rgba(255,107,53,.3)}
 
 /* ── Top accent bar ── */
-.top-bar{
-  height:4px;
-  background:linear-gradient(90deg,var(--orange),#FF9500);
-  position:sticky;top:0;z-index:50;
-}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--orange),#FF9500);position:sticky;top:0;z-index:50}
+
+/* ── Main content ── */
+.main-content{margin-left:var(--sidebar-w)}
 
 /* ── Zoom wrapper ── */
 #zoom-root{
-  transform-origin:top center;
-  transition:transform .2s ease;
-  padding:2.5rem 2rem 4rem;
-  max-width:1100px;
-  margin:0 auto;
+  transform-origin:top center;transition:transform .2s ease;
+  padding:2.5rem 2rem 5rem;max-width:1100px;margin:0 auto;
 }
 
-/* ── Zoom controls (fixed) ── */
+/* ── Zoom controls ── */
 .zoom-bar{
-  position:fixed;bottom:1.5rem;right:1.5rem;
-  display:flex;align-items:center;gap:6px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:40px;padding:.4rem .65rem;
-  z-index:100;
-  box-shadow:0 4px 24px rgba(0,0,0,.12);
+  position:fixed;bottom:1.5rem;right:1.5rem;display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:40px;
+  padding:.4rem .65rem;z-index:110;box-shadow:0 4px 24px rgba(0,0,0,.12);
 }
 .zoom-btn{
-  width:28px;height:28px;border-radius:50%;
-  background:var(--bg);border:1px solid var(--border);
-  color:var(--text2);font-size:16px;cursor:pointer;
+  width:28px;height:28px;border-radius:50%;background:var(--bg);
+  border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  transition:background .15s,color .15s;
-  font-family:var(--mono);user-select:none;
+  transition:background .15s,color .15s;font-family:var(--mono);user-select:none;
 }
 .zoom-btn:hover{background:var(--border);color:var(--text)}
 .zoom-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:center}
 .zoom-reset{font-size:10px;font-family:var(--mono);color:var(--text3);cursor:pointer;padding:0 4px}
 .zoom-reset:hover{color:var(--orange)}
 
+/* ── Print bar ── */
+.print-bar{display:flex;justify-content:flex-end;margin-bottom:1.5rem}
+.print-btn{
+  font-family:var(--mono);font-size:11px;color:var(--text2);
+  background:var(--surface);border:1px solid var(--border);border-radius:20px;
+  padding:.35rem 1rem;cursor:pointer;transition:color .15s,border-color .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.print-btn:hover{color:var(--text);border-color:var(--text3)}
+
 /* ── Header ── */
 .report-header{
-  display:grid;grid-template-columns:1fr auto;
-  gap:2rem;align-items:start;
-  margin-bottom:2.5rem;
-  padding:2rem 0 2rem;
-  border-bottom:2px solid var(--border);
+  display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:start;
+  margin-bottom:2.5rem;padding:2rem 0 2rem;border-bottom:2px solid var(--border);
 }
 .report-stamp{
   font-family:var(--mono);font-size:10px;letter-spacing:.14em;
@@ -92,191 +125,148 @@ body{
   display:flex;align-items:center;gap:8px;
 }
 .report-stamp::before{content:'';width:24px;height:2px;background:var(--orange);display:inline-block;border-radius:1px}
-h1{
-  font-family:var(--display);font-size:44px;font-weight:800;
-  line-height:1.05;color:var(--text);letter-spacing:-.02em;
-}
+h1{font-family:var(--display);font-size:44px;font-weight:800;line-height:1.05;color:var(--text);letter-spacing:-.02em}
 h1 em{color:var(--orange);font-style:normal}
 .report-sub{font-size:12px;color:var(--text3);margin-top:.75rem;line-height:1.6;font-family:var(--mono)}
 .meta-pills{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
 .meta-pill{
-  font-size:11px;font-family:var(--mono);
-  padding:5px 14px;border-radius:20px;
-  background:var(--bg);border:1px solid var(--border);
-  color:var(--text2);white-space:nowrap;
+  font-size:11px;font-family:var(--mono);padding:5px 14px;border-radius:20px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text2);white-space:nowrap;
 }
 .meta-pill strong{color:var(--text);font-weight:600}
 
-/* ── KPI strip ── */
-.kpi-strip{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  gap:12px;margin-bottom:2.5rem;
-}
+/* ── KPI strip (5 cols) ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:2.5rem}
 .kpi-cell{
-  background:var(--surface);
-  padding:1.5rem 1.75rem;
-  border-radius:16px;
+  background:var(--surface);padding:1.4rem 1.5rem;border-radius:16px;
   border:1px solid var(--border);
   box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
 }
 .kpi-cell.orange{background:var(--orange-bg);border-color:rgba(255,107,53,.2)}
-.kpi-cell.coral{background:var(--coral-bg);border-color:rgba(240,56,79,.2)}
-.kpi-cell.sky{background:var(--sky-bg);border-color:rgba(14,165,233,.2)}
-.kpi-cell.green{background:var(--green-bg);border-color:rgba(16,185,129,.2)}
-.kpi-label{font-size:11px;font-family:var(--mono);letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:.6rem}
-.kpi-num{font-family:var(--display);font-size:56px;font-weight:800;line-height:1;margin-bottom:.3rem}
+.kpi-cell.coral {background:var(--coral-bg); border-color:rgba(240,56,79,.2)}
+.kpi-cell.sky   {background:var(--sky-bg);   border-color:rgba(14,165,233,.2)}
+.kpi-cell.green {background:var(--green-bg); border-color:rgba(16,185,129,.2)}
+.kpi-cell.amber {background:var(--amber-bg); border-color:rgba(245,158,11,.2)}
+.kpi-icon{font-size:15px;margin-bottom:.3rem;display:block;opacity:.7}
+.kpi-label{font-size:10px;font-family:var(--mono);letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem}
+.kpi-num{font-family:var(--display);font-size:48px;font-weight:800;line-height:1;margin-bottom:.3rem}
 .kpi-cell.orange .kpi-num{color:var(--orange)}
 .kpi-cell.coral  .kpi-num{color:var(--coral)}
 .kpi-cell.sky    .kpi-num{color:var(--sky)}
 .kpi-cell.green  .kpi-num{color:var(--green)}
+.kpi-cell.amber  .kpi-num{color:var(--amber)}
 .kpi-note{font-size:11px;color:var(--text2);line-height:1.4}
 
 /* ── Section heading ── */
 .sec-head{
-  margin-bottom:1.25rem;margin-top:3rem;
-  padding-bottom:.75rem;
+  margin-bottom:1.25rem;margin-top:3rem;padding-bottom:.75rem;
   border-bottom:3px solid var(--orange);
   display:flex;align-items:flex-end;justify-content:space-between;
 }
-.sec-head.coral{border-bottom-color:var(--coral)}
-.sec-head.sky{border-bottom-color:var(--sky)}
+.sec-head.coral {border-bottom-color:var(--coral)}
+.sec-head.sky   {border-bottom-color:var(--sky)}
 .sec-head.violet{border-bottom-color:var(--violet)}
-.sec-head.green{border-bottom-color:var(--green)}
+.sec-head.green {border-bottom-color:var(--green)}
+.sec-head.amber {border-bottom-color:var(--amber)}
 .sec-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text)}
 .sec-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-top:.3rem}
 .sec-num{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;flex-shrink:0;margin-left:1rem}
 
-/* ── Hub chart ── */
-.hub-chart{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  margin-bottom:1rem;
+/* ── Chart wrapper ── */
+.chart-wrap{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:1.25rem;margin-bottom:1rem;
   box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
 }
-.hub-chart-header{
-  display:grid;grid-template-columns:200px 1fr 80px 96px;
-  padding:.7rem 1.5rem;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
-  gap:12px;align-items:center;
-}
-.hub-row{
-  display:grid;grid-template-columns:200px 1fr 80px 96px;
-  padding:.9rem 1.5rem;
-  border-bottom:1px solid var(--border);
-  align-items:center;gap:12px;
-  transition:background .12s;
-}
-.hub-row:last-child{border-bottom:none}
-.hub-row:hover{background:var(--bg)}
-.hub-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
-.hub-bar-track{height:14px;background:var(--bg);border-radius:7px;overflow:hidden;border:1px solid var(--border)}
-.hub-bar{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--orange),#FF9500)}
-.hub-count{font-size:13px;font-family:var(--mono);color:var(--orange);text-align:right;font-weight:600}
-.hub-risk{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;font-weight:500;white-space:nowrap}
-.risk-h{background:var(--coral-bg);color:var(--coral)}
-.risk-m{background:var(--amber-bg);color:var(--amber)}
-.risk-l{background:var(--green-bg);color:var(--green)}
+.chart-title{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.75rem}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+.chart-row .chart-wrap{margin-bottom:0}
 
-/* ── Island modules ── */
-.island-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:12px;margin-bottom:1rem;
+/* ── Data table ── */
+.table-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:.5rem;flex-wrap:wrap}
+.table-search{
+  font-family:var(--mono);font-size:11px;color:var(--text);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:.32rem .75rem;outline:none;width:220px;
+  transition:border-color .15s;box-shadow:0 1px 3px rgba(0,0,0,.04);
 }
-.island-card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:1.75rem 1.25rem 1.5rem;
-  text-align:center;
+.table-search:focus{border-color:var(--orange)}
+.table-search::placeholder{color:var(--text3)}
+.table-hint{font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:auto}
+.data-table{
+  width:100%;border-collapse:collapse;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;font-family:var(--mono);font-size:12px;
   box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-  transition:box-shadow .15s;
+  margin-bottom:1rem;
 }
-.island-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
-.island-years{
-  font-family:var(--display);font-size:52px;font-weight:800;
-  color:var(--coral);line-height:1;margin-bottom:.25rem;
+.data-table thead{position:sticky;top:0;z-index:2}
+.data-table thead tr{background:var(--bg);border-bottom:1px solid var(--border)}
+.data-table th{
+  padding:.65rem 1.25rem;text-align:left;
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;
+  color:var(--text3);text-transform:uppercase;user-select:none;white-space:nowrap;
 }
+.data-table th[data-sort]{cursor:pointer;transition:color .15s}
+.data-table th[data-sort]:hover{color:var(--text)}
+.data-table th.sort-asc::after{content:' \25b2';color:var(--orange)}
+.data-table th.sort-desc::after{content:' \25bc';color:var(--orange)}
+.data-table tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+.data-table tbody tr:last-child{border-bottom:none}
+.data-table tbody tr:nth-child(even){background:rgba(0,0,0,.018)}
+.data-table tbody tr:hover{background:var(--bg)}
+.data-table td{padding:.7rem 1.25rem;vertical-align:middle}
+.col-name{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Badges ── */
+.badge{display:inline-block;font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-coral {background:var(--coral-bg); color:var(--coral); border:1px solid rgba(240,56,79,.2)}
+.badge-amber {background:var(--amber-bg); color:var(--amber); border:1px solid rgba(245,158,11,.2)}
+.badge-green {background:var(--green-bg); color:var(--green); border:1px solid rgba(16,185,129,.2)}
+.badge-sky   {background:var(--sky-bg);   color:var(--sky);   border:1px solid rgba(14,165,233,.2)}
+.badge-orange{background:var(--orange-bg);color:var(--orange);border:1px solid rgba(255,107,53,.2)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid rgba(124,58,237,.2)}
+.badge-dim   {background:var(--bg);       color:var(--text3); border:1px solid var(--border)}
+
+/* ── Island grid ── */
+.island-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
+.island-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:1.75rem 1.25rem 1.5rem;text-align:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s,border-color .15s;
+}
+.island-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06);border-color:rgba(240,56,79,.3)}
+.island-years{font-family:var(--display);font-size:52px;font-weight:800;color:var(--coral);line-height:1;margin-bottom:.25rem}
 .island-years span{font-size:22px;color:var(--text3);font-weight:700}
 .island-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.4rem;word-break:break-word}
 .island-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
 
-/* ── Git stability ── */
-.git-wrap{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  margin-bottom:1rem;
+/* ── L2 candidates grid ── */
+.l2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
+.l2-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:1.5rem 1.25rem;
   box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s;
 }
-.git-header{
-  display:grid;grid-template-columns:200px 1fr 80px 110px 90px;
-  padding:.7rem 1.5rem;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
-  gap:12px;align-items:center;
+.l2-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.l2-rank{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem}
+.l2-name{font-family:var(--display);font-size:18px;font-weight:800;color:var(--text);margin-bottom:.5rem;word-break:break-word}
+.l2-reason{font-size:12px;color:var(--text2);line-height:1.6;font-family:var(--mono)}
+.l2-action{
+  display:inline-block;margin-top:.75rem;font-size:11px;font-family:var(--mono);
+  padding:5px 14px;border-radius:20px;font-weight:500;
+  background:var(--violet-bg);color:var(--violet);border:1px solid rgba(124,58,237,.25);
+  text-decoration:none;
 }
-.git-row{
-  display:grid;grid-template-columns:200px 1fr 80px 110px 90px;
-  padding:.9rem 1.5rem;
-  border-bottom:1px solid var(--border);
-  align-items:center;gap:12px;
-  transition:background .12s;
-}
-.git-row:last-child{border-bottom:none}
-.git-row:hover{background:var(--bg)}
-.git-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
-.git-bar-track{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
-.git-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--sky),#38BDF8)}
-.git-num{font-size:12px;font-family:var(--mono);color:var(--sky);text-align:right;font-weight:600}
-.git-date{font-size:11px;font-family:var(--mono);color:var(--text3)}
-.git-status{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
-.s-active{background:var(--green-bg);color:var(--green)}
-.s-stale{background:var(--amber-bg);color:var(--amber)}
-.s-frozen{background:var(--sky-bg);color:var(--sky)}
 
-/* ── Dead candidates ── */
-.dead-table{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-}
-.dead-header{
-  display:grid;grid-template-columns:2fr 2fr 96px;
-  padding:.7rem 1.5rem;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
-}
-.dead-row{
-  display:grid;grid-template-columns:2fr 2fr 96px;
-  padding:.9rem 1.5rem;
-  border-bottom:1px solid var(--border);
-  align-items:center;
-  transition:background .12s;
-}
-.dead-row:last-child{border-bottom:none}
-.dead-row:hover{background:var(--bg)}
-.dead-row.risk-high{background:rgba(240,56,79,.03)}
-.dead-row.risk-mid{background:rgba(245,158,11,.03)}
-.dead-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
-.dead-file{font-size:11px;font-family:var(--mono);color:var(--text3)}
-.dead-conf{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
-.conf-h{background:var(--coral-bg);color:var(--coral)}
-.conf-m{background:var(--amber-bg);color:var(--amber)}
-.conf-l{background:var(--sky-bg);color:var(--sky)}
-
-/* ── Priority block ── */
+/* ── Priority list ── */
 .priority-list{display:flex;flex-direction:column;gap:10px;margin-bottom:1rem}
 .priority-item{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-left:4px solid var(--orange);
-  border-radius:16px;
-  padding:1.25rem 1.5rem;
-  display:grid;grid-template-columns:56px 1fr auto;
-  gap:1.25rem;align-items:center;
+  background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+  border-radius:16px;padding:1.25rem 1.5rem;
+  display:grid;grid-template-columns:56px 1fr auto;gap:1.25rem;align-items:center;
   box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
   transition:box-shadow .15s;
 }
@@ -287,156 +277,99 @@ h1 em{color:var(--orange);font-style:normal}
 .priority-rank{font-family:var(--display);font-size:38px;font-weight:800;color:var(--text3);line-height:1;text-align:center}
 .priority-name{font-size:15px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.35rem}
 .priority-reason{font-size:12px;color:var(--text2);line-height:1.55}
-.priority-action{
-  font-size:11px;font-family:var(--mono);
-  padding:6px 14px;border-radius:20px;
-  white-space:nowrap;cursor:default;display:inline-block;font-weight:500;
-}
-.act-layer2 .priority-action{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.3)}
-.act-delete  .priority-action{background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.3)}
-.act-monitor .priority-action{background:var(--sky-bg);color:var(--sky);border:1px solid rgba(14,165,233,.3)}
+.priority-action{font-size:11px;font-family:var(--mono);padding:6px 14px;border-radius:20px;white-space:nowrap;cursor:default;display:inline-block;font-weight:500}
+.act-layer2 .priority-action{background:var(--green-bg); color:var(--green); border:1px solid rgba(16,185,129,.3)}
+.act-delete  .priority-action{background:var(--coral-bg); color:var(--coral); border:1px solid rgba(240,56,79,.3)}
+.act-monitor .priority-action{background:var(--sky-bg);   color:var(--sky);   border:1px solid rgba(14,165,233,.3)}
 
-/* ── Tier table ── */
-.tier-wrap{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  margin-bottom:1rem;
-  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-}
-.tier-header{
-  display:grid;grid-template-columns:200px 110px 100px 120px;
-  padding:.7rem 1.5rem;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
-  gap:12px;align-items:center;
-}
-.tier-row{
-  display:grid;grid-template-columns:200px 110px 100px 120px;
-  padding:.9rem 1.5rem;
-  border-bottom:1px solid var(--border);
-  align-items:center;gap:12px;
-  transition:background .12s;
-}
-.tier-row:last-child{border-bottom:none}
-.tier-row:hover{background:var(--bg)}
-.tier-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
-.tier-badge{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
-.tier-1{background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.2)}
-.tier-2{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
-.tier-3{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.2)}
-.tier-dead{font-size:13px;font-family:var(--mono);color:var(--text2);text-align:right}
-
-/* ── Layer2 candidates ── */
-.l2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
-.l2-card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:1.5rem 1.25rem;
-  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-  transition:box-shadow .15s;
-}
-.l2-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
-.l2-rank{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem}
-.l2-name{font-family:var(--display);font-size:18px;font-weight:800;color:var(--text);margin-bottom:.5rem;word-break:break-word}
-.l2-reason{font-size:12px;color:var(--text2);line-height:1.6;font-family:var(--mono)}
-.l2-action{
-  display:inline-block;margin-top:.75rem;
-  font-size:11px;font-family:var(--mono);
-  padding:5px 14px;border-radius:20px;font-weight:500;
-  background:var(--violet-bg);color:var(--violet);
-  border:1px solid rgba(124,58,237,.25);
-}
-
-/* ── Phase handoffs ── */
-.handoff-table{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;
-  margin-bottom:1rem;
-  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-}
-.handoff-header{
-  display:grid;grid-template-columns:80px 1fr 2fr;
-  padding:.7rem 1.5rem;
-  background:var(--bg);border-bottom:1px solid var(--border);
-  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
-  gap:12px;align-items:center;
-}
-.handoff-row{
-  display:grid;grid-template-columns:80px 1fr 2fr;
-  padding:.9rem 1.5rem;
-  border-bottom:1px solid var(--border);
-  align-items:center;gap:12px;
-  transition:background .12s;
-}
-.handoff-row:last-child{border-bottom:none}
-.handoff-row:hover{background:var(--bg)}
-.handoff-phase{font-size:12px;font-family:var(--mono);font-weight:600;color:var(--violet)}
-.handoff-artifact{font-size:12px;font-family:var(--mono);color:var(--text)}
-.handoff-desc{font-size:11px;color:var(--text3);font-family:var(--mono)}
-
-/* ── Warning box ── */
+/* ── Warn box ── */
 .warn-box{
-  background:var(--amber-bg);
-  border:1px solid rgba(245,158,11,.3);
-  border-radius:16px;
-  padding:1.25rem 1.5rem;
-  display:flex;gap:12px;align-items:flex-start;
-  margin-top:2rem;
+  background:var(--amber-bg);border:1px solid rgba(245,158,11,.3);border-radius:16px;
+  padding:1.25rem 1.5rem;display:flex;gap:12px;align-items:flex-start;margin-top:2rem;
 }
 .warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
 .warn-text{font-size:12px;color:var(--text2);line-height:1.7;font-family:var(--mono)}
 .warn-text strong{color:var(--text)}
 
-/* ── Site nav ── */
-.site-nav{
-  display:flex;align-items:center;gap:6px;
-  padding:.6rem 1rem;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:12px;
-  margin-bottom:1.75rem;
-  flex-wrap:wrap;
-  box-shadow:0 1px 3px rgba(0,0,0,.04);
-}
-.nav-crumb{
-  font-size:11px;font-family:var(--mono);
-  padding:4px 12px;border-radius:20px;
-  text-decoration:none;
-  transition:background .15s,color .15s;
-  white-space:nowrap;
-}
-.nav-crumb.current{
-  background:var(--orange-bg);color:var(--orange);
-  border:1px solid rgba(255,107,53,.25);font-weight:600;cursor:default;
-}
-.nav-crumb.link{
-  background:var(--bg);color:var(--text2);
-  border:1px solid var(--border);cursor:pointer;
-}
-.nav-crumb.link:hover{background:var(--border);color:var(--text)}
-.nav-crumb.dim{background:transparent;color:var(--text3);border-color:transparent;cursor:default}
-.nav-sep{font-size:11px;color:var(--text3);font-family:var(--mono)}
-
 /* ── Footer ── */
 .report-footer{
-  margin-top:3rem;padding-top:1.5rem;
-  border-top:1px solid var(--border);
+  margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);
   display:flex;justify-content:space-between;align-items:center;
 }
 .footer-left{font-size:11px;font-family:var(--mono);color:var(--text3)}
 .footer-right{font-size:11px;font-family:var(--mono);color:var(--text3)}
+
+/* ── Fade-in ── */
+.fade-in{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .mobile-tabs{display:flex}
+  .main-content{margin-left:0;margin-top:48px}
+  #zoom-root{padding:1.5rem 1rem 3rem}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .kpi-strip .kpi-cell:last-child{grid-column:1/-1}
+  .report-header{grid-template-columns:1fr}
+  .meta-pills{align-items:flex-start}
+  .island-grid{grid-template-columns:repeat(2,1fr)}
+  .l2-grid{grid-template-columns:1fr}
+  .chart-row{grid-template-columns:1fr}
+  h1{font-size:32px}
+}
+
+/* ── Print ── */
+@media print{
+  .sidebar,.mobile-tabs,.zoom-bar,.print-bar,canvas{display:none!important}
+  .main-content{margin-left:0!important}
+  #zoom-root{transform:none!important;padding:1rem!important;max-width:100%!important}
+  .kpi-strip,.priority-item,.report-header{page-break-inside:avoid}
+  a{text-decoration:none!important}
+  .fade-in{opacity:1!important;transform:none!important}
+  .data-table{box-shadow:none!important}
+}
 </style>
 </head>
 <body>
 
+<!-- Mobile tab strip -->
+<div class="mobile-tabs">
+  <a class="mobile-tab active" href="#">Layer 1 &middot; 全局地圖</a>
+  <a class="mobile-tab" href="layer2-module-report-template.html">Layer 2 &middot; 模組深挖</a>
+</div>
+
+<!-- Sticky sidebar -->
+<nav class="sidebar" id="sidebar" aria-label="章節導覽">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">Layer 1 &middot; 全局地圖</div>
+    <div class="sidebar-sub">{{SOLUTION_NAME}}</div>
+  </div>
+  <div class="nav-groups">
+    <div class="nav-group-title">報告章節</div>
+    <a class="nav-link" href="#l1-kpi"     data-section="l1-kpi">&#9632; KPI 摘要</a>
+    <a class="nav-link" href="#l1-hubs"    data-section="l1-hubs">&#8644; 最多人用的模組</a>
+    <a class="nav-link" href="#l1-islands" data-section="l1-islands">&#9671; 沒人依賴的模組</a>
+    <a class="nav-link" href="#l1-stability" data-section="l1-stability">&#8635; Git 活躍度</a>
+    <a class="nav-link" href="#l1-tier"    data-section="l1-tier">&#9783; Tier 分析</a>
+    <a class="nav-link" href="#l1-dead"    data-section="l1-dead">&#8856; 死碼候選</a>
+    <a class="nav-link" href="#l1-candidates" data-section="l1-candidates">&#9670; L2 推薦</a>
+    <a class="nav-link" href="#l1-priority" data-section="l1-priority">&#8594; 行動建議</a>
+    <a class="nav-link" href="#l1-handoffs" data-section="l1-handoffs">&#9783; Phase 交付物</a>
+    <div class="nav-divider"></div>
+    <a class="nav-link" href="layer2-module-report-template.html">Layer 2 &rarr;</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-txt">Phase 0 &middot; Layer 1<br>Generated {{DATE}}<br>csharp-archaeology skill</div>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main class="main-content">
 <div class="top-bar"></div>
 
-<!-- Zoom controls -->
 <div class="zoom-bar">
-  <div class="zoom-btn" onclick="zoom(-10)">−</div>
+  <div class="zoom-btn" onclick="zoom(-10)">&minus;</div>
   <span class="zoom-pct" id="pct">100%</span>
   <div class="zoom-btn" onclick="zoom(+10)">+</div>
   <span class="zoom-reset" onclick="resetZoom()">reset</span>
@@ -444,299 +377,405 @@ h1 em{color:var(--orange);font-style:normal}
 
 <div id="zoom-root">
 
-  <!-- Site nav -->
-  <nav class="site-nav" aria-label="報告導覽">
-    <span class="nav-crumb current">Layer 1 · 全局地圖</span>
-    <span class="nav-sep">›</span>
-    <span class="nav-crumb dim">Layer 2 · 模組深挖</span>
-  </nav>
+  <!-- Print button -->
+  <div class="print-bar">
+    <button class="print-btn" onclick="window.print()">&#9113; Export / Print</button>
+  </div>
 
   <!-- Header -->
-  <div class="report-header">
-    <div class="header-left">
-      <div class="report-stamp">Layer 1 · Global Map Report</div>
+  <div class="report-header fade-in">
+    <div>
+      <div class="report-stamp">Layer 1 &middot; Global Map Report</div>
       <h1>程式碼庫<br><em>全局地圖</em></h1>
-      <p class="report-sub">00-global-map · Phase 0 Archaeology · 資料來源：dependency-map.json · git-stability.csv · dead-candidates.csv</p>
+      <p class="report-sub">00-global-map &middot; Phase 0 Archaeology &middot; 資料來源：dependency-map.json &middot; git-stability.csv &middot; dead-candidates.csv</p>
     </div>
     <div>
       <div class="meta-pills">
         <div class="meta-pill">產出日期 <strong>{{DATE}}</strong></div>
         <div class="meta-pill">Solution <strong>{{SOLUTION_NAME}}</strong></div>
         <div class="meta-pill">C# 專案數 <strong>{{PROJECT_COUNT}} 個</strong></div>
-        <div class="meta-pill">排除 <strong>*Ex.csproj · .vcxproj</strong></div>
+        <div class="meta-pill">排除 <strong>*Ex.csproj &middot; .vcxproj</strong></div>
       </div>
     </div>
   </div>
 
-  <!-- KPI Strip -->
-  <div class="kpi-strip">
+  <!-- KPI Strip (5 cells) -->
+  <div class="kpi-strip fade-in" id="l1-kpi" data-nav-id="l1-kpi">
     <div class="kpi-cell orange">
+      <span class="kpi-icon">&#9830;</span>
       <div class="kpi-label">已分析的專案數</div>
       <div class="kpi-num">{{PROJECT_COUNT}}</div>
       <div class="kpi-note">排除 Ex 結尾與 C++ 專案</div>
     </div>
     <div class="kpi-cell coral">
+      <span class="kpi-icon">&#9711;</span>
       <div class="kpi-label">沒有人依賴的模組</div>
       <div class="kpi-num">{{ISLAND_COUNT}}</div>
       <div class="kpi-note">刪除優先候選，需平行任務確認</div>
     </div>
     <div class="kpi-cell sky">
+      <span class="kpi-icon">&#9646;</span>
       <div class="kpi-label">兩年沒人動過</div>
       <div class="kpi-num">{{STALE_COUNT}}</div>
       <div class="kpi-note">穩定訊號，不代表是死碼</div>
     </div>
     <div class="kpi-cell green">
+      <span class="kpi-icon">&#8856;</span>
       <div class="kpi-label">可能沒在用的程式碼</div>
       <div class="kpi-num">{{DEAD_COUNT}}</div>
       <div class="kpi-note">private/internal，需人工確認</div>
     </div>
+    <div class="kpi-cell amber">
+      <span class="kpi-icon">&#9733;</span>
+      <div class="kpi-label">最高 Hub 分數</div>
+      <div class="kpi-num">{{TOP_HUB_SCORE}}</div>
+      <div class="kpi-note">{{TOP_HUB_NAME}} 被依賴次數</div>
+    </div>
   </div>
 
-  <!-- Hub Modules -->
-  <div class="sec-head">
-    <div>
-      <div class="sec-title">最多人在用的模組</div>
-      <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15</div>
-    </div>
-    <span class="sec-num">01 / 08</span>
-  </div>
-  <div class="hub-chart">
-    <div class="hub-chart-header">
-      <span>模組名稱</span>
-      <span>依賴次數</span>
-      <span>數量</span>
-      <span>風險等級</span>
-    </div>
-    <!--
-      ##HUB_ROWS## — 替換為從 dependency-map.json .hubs Top 15 產生的列
-      風險判斷：count/max >= 70% → 高風險 (risk-h)，>= 40% → 中風險 (risk-m)，其他 → 低風險 (risk-l)
-      格式範例（style="width:85%" 依實際比例填入）：
-      <div class="hub-row">
-        <span class="hub-name">{Name}</span>
-        <div class="hub-bar-track"><div class="hub-bar" style="width:{pct}%"></div></div>
-        <span class="hub-count">{count} 個</span>
-        <span class="hub-risk risk-{h|m|l}">{高風險|中風險|低風險}</span>
+  <!-- 01 Hub Modules -->
+  <div id="l1-hubs" data-nav-id="l1-hubs">
+    <div class="sec-head fade-in">
+      <div>
+        <div class="sec-title">最多人在用的模組</div>
+        <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15</div>
       </div>
-    -->
-    <!-- ##HUB_ROWS## -->
-  </div>
-
-  <!-- Island Modules -->
-  <div class="sec-head coral">
-    <div>
-      <div class="sec-title">沒有人依賴的模組</div>
-      <div class="sec-desc">這些模組沒有任何專案引用它 — 刪除優先候選，仍須平行任務（Task A + Task B）確認後才能動</div>
+      <span class="sec-num">01 / 09</span>
     </div>
-    <span class="sec-num">02 / 08</span>
-  </div>
-  <div class="island-grid">
-    <!--
-      ##ISLAND_CARDS## — 替換為從 dependency-map.json .islands × git-stability.csv 產生的卡片
-      island-years 填沉睡年數（整數，由 LastCommit 距今計算）
-      格式範例：
-      <div class="island-card">
-        <div class="island-years">{N}<span>年</span></div>
-        <div class="island-name">{Name}</div>
-        <div class="island-date">最後修改 {LastCommit}</div>
+    <div class="chart-wrap fade-in">
+      <div class="chart-title">被依賴次數（Top 15 模組）</div>
+      <div style="height:320px"><canvas id="chart-hubs"></canvas></div>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋模組名稱..." data-table="tbl-hubs">
+        <span class="table-hint">點擊欄位標題可排序</span>
       </div>
-    -->
-    <!-- ##ISLAND_CARDS## -->
+      <table class="data-table" id="tbl-hubs">
+        <thead>
+          <tr>
+            <th data-sort>模組名稱</th>
+            <th data-sort>被依賴次數</th>
+            <th data-sort>自身依賴數</th>
+            <th data-sort>風險等級</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##HUB_ROWS## — 替換為從 dependency-map.json .hubs Top 15 產生的列
+            風險判斷：count/max >= 70% → 高風險，>= 40% → 中風險，其他 → 低風險
+            格式：
+            <tr>
+              <td class="col-name">{Name}</td>
+              <td>{DependentCount}</td>
+              <td>{OwnDeps}</td>
+              <td><span class="badge badge-{coral|amber|green}">{高風險|中風險|低風險}</span></td>
+            </tr>
+          -->
+          <!-- ##HUB_ROWS## -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Git Stability -->
-  <div class="sec-head sky">
-    <div>
-      <div class="sec-title">最近有人動過嗎？</div>
-      <div class="sec-desc">過去兩年 Commit 活躍度 — 沒人動 ≠ 死碼，可能是成熟且核心的模組</div>
-    </div>
-    <span class="sec-num">03 / 08</span>
-  </div>
-  <div class="git-wrap">
-    <div class="git-header">
-      <span>模組名稱</span>
-      <span>最近兩年改動頻率</span>
-      <span>Commit 數</span>
-      <span>最後修改</span>
-      <span>狀態</span>
-    </div>
-    <!--
-      ##GIT_ROWS## — 替換為從 git-stability.csv 全部列產生的資料列
-      git-bar width = Commits2yr/max*100%（max 為該批次最大值）
-      狀態判斷：ACTIVE → s-active（活躍），STALE → s-stale（沉睡），FROZEN → s-frozen（封存）
-      格式範例（style="width:62%" 依實際比例填入）：
-      <div class="git-row">
-        <span class="git-name">{Module}</span>
-        <div class="git-bar-track"><div class="git-bar" style="width:{pct}%"></div></div>
-        <span class="git-num">{Commits2yr}</span>
-        <span class="git-date">{LastCommit}</span>
-        <span class="git-status s-{active|stale|frozen}">{活躍|沉睡|封存}</span>
+  <!-- 02 Island Modules -->
+  <div id="l1-islands" data-nav-id="l1-islands">
+    <div class="sec-head coral fade-in">
+      <div>
+        <div class="sec-title">沒有人依賴的模組</div>
+        <div class="sec-desc">這些模組沒有任何專案引用它 — 刪除優先候選，仍須平行任務（Task A + Task B）確認後才能動</div>
       </div>
-    -->
-    <!-- ##GIT_ROWS## -->
-  </div>
-
-  <!-- Tier Analysis Table -->
-  <div class="sec-head amber">
-    <div>
-      <div class="sec-title">Tier 分析 — 模組優先級</div>
-      <div class="sec-desc">依賴關係 × git 活躍度 × 死碼數量的交叉訊號 — TIER-1 刪除候選、TIER-2 Layer 2 優先、TIER-3 觀察</div>
+      <span class="sec-num">02 / 09</span>
     </div>
-    <span class="sec-num">04 / 08</span>
-  </div>
-  <div class="tier-wrap">
-    <div class="tier-header">
-      <span>模組名稱</span>
-      <span>Git 狀態</span>
-      <span>死碼候選數</span>
-      <span>Tier</span>
-    </div>
-    <!--
-      ##TIER_TABLE## — 替換為 AI 計算的 Tier 交叉訊號表
-      Tier 判斷規則：
-        TIER-1（刪除候選）：孤島 AND (FROZEN 或 STALE) AND dead count > 0
-        TIER-2（Layer 2 優先）：Hub 模組 OR dead count 多 OR STALE 但有呼叫者
-        TIER-3（觀察）：ACTIVE 且 dead count 少
-      格式範例：
-      <div class="tier-row">
-        <span class="tier-name">{Module}</span>
-        <span class="git-status s-{active|stale|frozen}">{ACTIVE|STALE|FROZEN}</span>
-        <span class="tier-dead">{N}</span>
-        <span class="tier-badge tier-{1|2|3}">TIER-{1|2|3}</span>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋模組名稱..." data-table="tbl-islands">
+        <span class="table-hint">點擊欄位標題可排序</span>
       </div>
-    -->
-    <!-- ##TIER_TABLE## -->
+      <table class="data-table" id="tbl-islands">
+        <thead>
+          <tr>
+            <th data-sort>沉睡年數</th>
+            <th data-sort>模組名稱</th>
+            <th data-sort>最後修改</th>
+            <th data-sort>狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##ISLAND_CARDS## — 替換為從 dependency-map.json .islands × git-stability.csv 產生的資料列
+            沉睡年數由 LastCommit 距今計算（整數），FROZEN → badge-sky，STALE → badge-amber
+            格式：
+            <tr>
+              <td>{N} 年</td>
+              <td class="col-name">{Name}</td>
+              <td style="color:var(--text3)">{LastCommit}</td>
+              <td><span class="badge badge-{sky|amber}">{FROZEN|STALE}</span></td>
+            </tr>
+          -->
+          <!-- ##ISLAND_CARDS## -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Dead Code -->
-  <div class="sec-head violet">
-    <div>
-      <div class="sec-title">可能沒在用的程式碼</div>
-      <div class="sec-desc">Private / Internal — 在整個 Solution 內找不到呼叫者。需人工二次確認，Public 成員不在此列</div>
-    </div>
-    <span class="sec-num">05 / 08</span>
-  </div>
-  <div class="dead-table">
-    <div class="dead-header">
-      <span>功能名稱</span>
-      <span>所在位置</span>
-      <span>可信度</span>
-    </div>
-    <!--
-      ##DEAD_ROWS## — 替換為從 dead-candidates.csv Top 50 產生的資料列
-      可信度判斷：孤島模組 + FROZEN → 高可信 (conf-h)，STALE → 中可信 (conf-m)，其他 → 低可信 (conf-l)
-      高可信列加 class="dead-row risk-high"，中可信列加 class="dead-row risk-mid"
-      格式範例（RelativePath 含行號，例如 HMIKlarf/Parser.cs:142）：
-      <div class="dead-row">
-        <span class="dead-name">{Method}</span>
-        <span class="dead-file">{RelativePath}:{Line}</span>
-        <span class="dead-conf conf-{h|m|l}">{高可信|中可信|低可信}</span>
+  <!-- 03 Git Stability -->
+  <div id="l1-stability" data-nav-id="l1-stability">
+    <div class="sec-head sky fade-in">
+      <div>
+        <div class="sec-title">最近有人動過嗎？</div>
+        <div class="sec-desc">過去兩年 Commit 活躍度 — 沒人動 &ne; 死碼，可能是成熟且核心的模組</div>
       </div>
-    -->
-    <!-- ##DEAD_ROWS## -->
-  </div>
-
-  <!-- Layer 2 Candidates -->
-  <div class="sec-head violet">
-    <div>
-      <div class="sec-title">建議 Layer 2 深挖的模組</div>
-      <div class="sec-desc">Top 3 推薦 — 根據 Tier 分析選出，優先投入 Layer 2 分析資源</div>
+      <span class="sec-num">03 / 09</span>
     </div>
-    <span class="sec-num">06 / 08</span>
-  </div>
-  <div class="l2-grid">
-    <!--
-      ##LAYER2_CANDIDATES## — 替換為 Top 3 推薦 Layer 2 模組卡片（含一行理由）
-      格式範例：
-      <div class="l2-card">
-        <div class="l2-rank">推薦 #1</div>
-        <div class="l2-name">{ModuleName}</div>
-        <div class="l2-reason">{一行理由，引用具體數據，例如：孤島模組，3 年未動，42 個死碼候選}</div>
-        <span class="l2-action">執行 Layer 2 →</span>
-      </div>
-    -->
-    <!-- ##LAYER2_CANDIDATES## -->
-  </div>
-
-  <!-- Priority -->
-  <div class="sec-head green">
-    <div>
-      <div class="sec-title">接下來怎麼做</div>
-      <div class="sec-desc">根據依賴關係 + 活躍度綜合判斷，建議優先執行的模組（3–6 項）</div>
-    </div>
-    <span class="sec-num">07 / 08</span>
-  </div>
-  <div class="priority-list">
-    <!--
-      ##PRIORITY_ITEMS## — 替換為 AI 根據分析綜合判斷的行動建議（建議 3–6 項）
-      priority-item 的 act- class 決定左側彩色邊條與 action 按鈕顏色：
-        act-layer2（綠色邊條 → 執行 Layer 2 深挖）
-        act-delete（紅色邊條 → 平行任務確認後刪除）
-        act-monitor（藍色邊條 → 監控觀察，先不動）
-      格式範例：
-      <div class="priority-item act-{layer2|delete|monitor}">
-        <div class="priority-rank">{N}</div>
-        <div class="priority-body">
-          <div class="priority-name">{ModuleName}</div>
-          <div class="priority-reason">{說明理由，引用具體數據}</div>
+    <div class="chart-row fade-in">
+      <div class="chart-wrap">
+        <div class="chart-title">狀態分佈（全部 {{PROJECT_COUNT}} 個專案）</div>
+        <div style="height:240px;display:flex;align-items:center;justify-content:center">
+          <canvas id="chart-git-status"></canvas>
         </div>
-        <span class="priority-action">{行動標籤}</span>
       </div>
-    -->
-    <!-- ##PRIORITY_ITEMS## -->
+      <div class="chart-wrap">
+        <div class="chart-title">Commit 數（活躍度前 10 模組）</div>
+        <div style="height:240px"><canvas id="chart-git-commits"></canvas></div>
+      </div>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋模組名稱..." data-table="tbl-git">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-git">
+        <thead>
+          <tr>
+            <th data-sort>模組名稱</th>
+            <th data-sort>2yr Commits</th>
+            <th data-sort>最後修改</th>
+            <th data-sort>狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##GIT_ROWS## — 替換為從 git-stability.csv 全部列產生的資料列
+            狀態判斷：ACTIVE → badge-green，STALE → badge-amber，FROZEN → badge-sky
+            格式：
+            <tr>
+              <td class="col-name">{Module}</td>
+              <td>{Commits2yr}</td>
+              <td>{LastCommit}</td>
+              <td><span class="badge badge-{green|amber|sky}">{ACTIVE|STALE|FROZEN}</span></td>
+            </tr>
+          -->
+          <!-- ##GIT_ROWS## -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Phase Handoffs -->
-  <div class="sec-head" style="border-bottom-color:var(--text3)">
-    <div>
-      <div class="sec-title">Phase 0 交付物一覽</div>
-      <div class="sec-desc">Phase 0 產出的 artifacts 與對應下游 Phase 的消費者</div>
-    </div>
-    <span class="sec-num">08 / 08</span>
-  </div>
-  <div class="handoff-table">
-    <div class="handoff-header">
-      <span>下游 Phase</span>
-      <span>Artifact</span>
-      <span>用途</span>
-    </div>
-    <!--
-      ##PHASE_HANDOFFS## — 替換為 Phase 0 交付物簡表（依 SKILL.md Phase 0 artifact 清單填入）
-      格式範例：
-      <div class="handoff-row">
-        <span class="handoff-phase">Phase 1</span>
-        <span class="handoff-artifact">copilot-instructions-draft.md</span>
-        <span class="handoff-desc">模組詞彙表、No-go zones、build 指令、語言版本</span>
+  <!-- 04 Tier Analysis -->
+  <div id="l1-tier" data-nav-id="l1-tier">
+    <div class="sec-head amber fade-in">
+      <div>
+        <div class="sec-title">Tier 分析 — 模組優先級</div>
+        <div class="sec-desc">依賴關係 &times; git 活躍度 &times; 死碼數量的交叉訊號 — TIER-1 刪除候選、TIER-2 Layer 2 優先、TIER-3 觀察</div>
       </div>
-    -->
-    <div class="handoff-row">
-      <span class="handoff-phase">Phase 1</span>
-      <span class="handoff-artifact">copilot-instructions-draft.md</span>
-      <span class="handoff-desc">模組詞彙表、No-go zones、build 指令、語言版本</span>
+      <span class="sec-num">04 / 09</span>
     </div>
-    <div class="handoff-row">
-      <span class="handoff-phase">Phase 2</span>
-      <span class="handoff-artifact">dead-candidates.csv</span>
-      <span class="handoff-desc">含 FullyQualifiedName，可與 NDepend / Roslyn 交叉比對</span>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋模組名稱..." data-table="tbl-tier">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-tier">
+        <thead>
+          <tr>
+            <th data-sort>模組名稱</th>
+            <th data-sort>被依賴次數</th>
+            <th data-sort>Git 狀態</th>
+            <th data-sort>死碼候選數</th>
+            <th data-sort>Tier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##TIER_TABLE## — 替換為 AI 計算的 Tier 交叉訊號表
+            Tier 判斷規則：
+              TIER-1（刪除候選）：孤島 AND (FROZEN 或 STALE) AND dead count > 0
+              TIER-2（Layer 2 優先）：Hub 模組 OR dead count 多 OR STALE 但有呼叫者
+              TIER-3（觀察）：ACTIVE 且 dead count 少
+            格式：
+            <tr>
+              <td class="col-name">{Module}</td>
+              <td>{DependentCount}</td>
+              <td><span class="badge badge-{green|amber|sky}">{ACTIVE|STALE|FROZEN}</span></td>
+              <td>{DeadCount}</td>
+              <td><span class="badge badge-{coral|amber|green}">TIER-{1|2|3}</span></td>
+            </tr>
+          -->
+          <!-- ##TIER_TABLE## -->
+        </tbody>
+      </table>
     </div>
-    <div class="handoff-row">
-      <span class="handoff-phase">Phase 3</span>
-      <span class="handoff-artifact">{Module}-report.html</span>
-      <span class="handoff-desc">Layer 2 Decision Recommendation，Pilot 選擇依據</span>
-    </div>
-    <div class="handoff-row">
-      <span class="handoff-phase">Phase 4</span>
-      <span class="handoff-artifact">dependency-map.json</span>
-      <span class="handoff-desc">No-go zones 清單、Layer leakage rules</span>
-    </div>
-    <div class="handoff-row">
-      <span class="handoff-phase">Phase 5</span>
-      <span class="handoff-artifact">00-global-map.html</span>
-      <span class="handoff-desc">全員可視化的模組地圖</span>
-    </div>
-    <!-- ##PHASE_HANDOFFS## -->
   </div>
 
-  <div class="warn-box">
+  <!-- 05 Dead Code -->
+  <div id="l1-dead" data-nav-id="l1-dead">
+    <div class="sec-head violet fade-in">
+      <div>
+        <div class="sec-title">可能沒在用的程式碼</div>
+        <div class="sec-desc">Private / Internal — 在整個 Solution 內找不到呼叫者。需人工二次確認，Public 成員不在此列</div>
+      </div>
+      <span class="sec-num">05 / 09</span>
+    </div>
+    <div class="chart-wrap fade-in">
+      <div class="chart-title">死碼候選數量（依模組分組）</div>
+      <div style="height:220px"><canvas id="chart-dead"></canvas></div>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋功能名稱..." data-table="tbl-dead">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-dead">
+        <thead>
+          <tr>
+            <th data-sort>功能名稱</th>
+            <th data-sort>所在位置</th>
+            <th data-sort>存取層級</th>
+            <th data-sort>可信度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##DEAD_ROWS## — 替換為從 dead-candidates.csv Top 50 產生的資料列
+            可信度判斷：孤島模組 + FROZEN → 高可信（badge-coral），STALE → 中可信（badge-amber），其他 → 低可信（badge-sky）
+            格式（RelativePath 含行號，例如 HMIKlarf/Parser.cs:142）：
+            <tr>
+              <td class="col-name">{Method}</td>
+              <td class="col-name" style="color:var(--text3)">{RelativePath}:{Line}</td>
+              <td><span class="badge badge-dim">{private|internal}</span></td>
+              <td><span class="badge badge-{coral|amber|sky}">{高可信|中可信|低可信}</span></td>
+            </tr>
+          -->
+          <!-- ##DEAD_ROWS## -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 06 Layer 2 Candidates -->
+  <div id="l1-candidates" data-nav-id="l1-candidates">
+    <div class="sec-head violet fade-in">
+      <div>
+        <div class="sec-title">建議 Layer 2 深挖的模組</div>
+        <div class="sec-desc">Top 3 推薦 — 根據 Tier 分析選出，優先投入 Layer 2 分析資源</div>
+      </div>
+      <span class="sec-num">06 / 09</span>
+    </div>
+    <div class="l2-grid fade-in">
+      <!--
+        ##LAYER2_CANDIDATES## — 替換為 Top 3 推薦 Layer 2 模組卡片（含一行理由）
+        格式：
+        <div class="l2-card">
+          <div class="l2-rank">推薦 #1</div>
+          <div class="l2-name">{ModuleName}</div>
+          <div class="l2-reason">{一行理由，引用具體數據，例如：孤島模組，3 年未動，42 個死碼候選}</div>
+          <a class="l2-action" href="{ModuleName}-report.html">執行 Layer 2 &rarr;</a>
+        </div>
+      -->
+      <!-- ##LAYER2_CANDIDATES## -->
+    </div>
+  </div>
+
+  <!-- 07 Priority -->
+  <div id="l1-priority" data-nav-id="l1-priority">
+    <div class="sec-head green fade-in">
+      <div>
+        <div class="sec-title">接下來怎麼做</div>
+        <div class="sec-desc">根據依賴關係 + 活躍度綜合判斷，建議優先執行的模組（3–6 項）</div>
+      </div>
+      <span class="sec-num">07 / 09</span>
+    </div>
+    <div class="priority-list fade-in">
+      <!--
+        ##PRIORITY_ITEMS## — 替換為 AI 根據分析綜合判斷的行動建議（建議 3–6 項）
+        act- class 決定左側彩色邊條與 action 按鈕顏色：
+          act-layer2（綠色 → 執行 Layer 2 深挖）
+          act-delete（紅色 → 平行任務確認後刪除）
+          act-monitor（藍色 → 監控觀察，先不動）
+        格式：
+        <div class="priority-item act-{layer2|delete|monitor}">
+          <div class="priority-rank">{N}</div>
+          <div>
+            <div class="priority-name">{ModuleName}</div>
+            <div class="priority-reason">{說明理由，引用具體數據}</div>
+          </div>
+          <span class="priority-action">{行動標籤}</span>
+        </div>
+      -->
+      <!-- ##PRIORITY_ITEMS## -->
+    </div>
+  </div>
+
+  <!-- 08 Phase Handoffs -->
+  <div id="l1-handoffs" data-nav-id="l1-handoffs">
+    <div class="sec-head fade-in" style="border-bottom-color:var(--text3)">
+      <div>
+        <div class="sec-title">Phase 0 交付物一覽</div>
+        <div class="sec-desc">Phase 0 產出的 artifacts 與對應下游 Phase 的消費者</div>
+      </div>
+      <span class="sec-num">08 / 09</span>
+    </div>
+    <div class="fade-in">
+      <table class="data-table" id="tbl-handoffs">
+        <thead>
+          <tr>
+            <th>下游 Phase</th>
+            <th>Artifact</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-violet">Phase 1</span></td>
+            <td style="font-family:var(--mono)">copilot-instructions-draft.md</td>
+            <td style="color:var(--text2)">模組詞彙表、No-go zones、build 指令、語言版本</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-violet">Phase 2</span></td>
+            <td style="font-family:var(--mono)">dead-candidates.csv</td>
+            <td style="color:var(--text2)">含 FullyQualifiedName，可與 NDepend / Roslyn 交叉比對</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-violet">Phase 3</span></td>
+            <td style="font-family:var(--mono)">{Module}-report.html</td>
+            <td style="color:var(--text2)">Layer 2 Decision Recommendation，Pilot 選擇依據</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-violet">Phase 4</span></td>
+            <td style="font-family:var(--mono)">dependency-map.json</td>
+            <td style="color:var(--text2)">No-go zones 清單、Layer leakage rules</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-violet">Phase 5</span></td>
+            <td style="font-family:var(--mono)">00-global-map.html</td>
+            <td style="color:var(--text2)">全員可視化的模組地圖</td>
+          </tr>
+          <!--
+            ##PHASE_HANDOFFS## — 若有額外的交付物，依格式追加：
+            <tr>
+              <td><span class="badge badge-violet">Phase N</span></td>
+              <td style="font-family:var(--mono)">{artifact}</td>
+              <td style="color:var(--text2)">{用途說明}</td>
+            </tr>
+          -->
+          <!-- ##PHASE_HANDOFFS## -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="warn-box fade-in">
     <span class="warn-icon">&#9888;&#65039;</span>
     <div class="warn-text">
       可能沒在用的程式碼均為 private/internal 層級，可信度僅代表 grep 掃描結果的可信程度。<br>
@@ -745,15 +784,18 @@ h1 em{color:var(--orange);font-style:normal}
     </div>
   </div>
 
-  <!-- Footer -->
-  <div class="report-footer">
-    <span class="footer-left">Phase 0 · Layer 1 · 00-global-map</span>
-    <span class="footer-right">Generated by csharp-archaeology skill · VS Code Copilot Enterprise</span>
+  <div class="report-footer fade-in">
+    <span class="footer-left">Phase 0 &middot; Layer 1 &middot; 00-global-map</span>
+    <span class="footer-right">Generated by csharp-archaeology skill &middot; VS Code Copilot Enterprise</span>
   </div>
 
 </div><!-- /zoom-root -->
+</main><!-- /main-content -->
 
 <script>
+// ══════════════════════════════════════════════════════════
+//  ZOOM
+// ══════════════════════════════════════════════════════════
 let scale = 1;
 const root = document.getElementById('zoom-root');
 const pct  = document.getElementById('pct');
@@ -767,6 +809,211 @@ function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent=
 document.addEventListener('wheel', e=>{
   if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoom(e.deltaY < 0 ? 10 : -10); }
 },{passive:false});
+
+// ══════════════════════════════════════════════════════════
+//  SORTABLE + SEARCHABLE TABLES
+// ══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.data-table').forEach(makeSortable);
+  document.querySelectorAll('.table-search').forEach(input=>{
+    const tbl = document.getElementById(input.dataset.table);
+    if(tbl) makeSearchable(input, tbl);
+  });
+  initScrollSpy();
+  initFadeIn();
+});
+
+function makeSortable(table){
+  const tbody = table.querySelector('tbody');
+  if(!tbody) return;
+  Array.from(tbody.querySelectorAll('tr')).forEach((r,i)=>r.dataset.origIdx=i);
+  const allTh = Array.from(table.querySelectorAll('thead th'));
+  table.querySelectorAll('th[data-sort]').forEach(th=>{
+    const colIdx = allTh.indexOf(th);
+    let dir = 0;
+    th.addEventListener('click',()=>{
+      table.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+      dir = dir===0?1:dir===1?-1:0;
+      if(dir===1) th.classList.add('sort-asc');
+      else if(dir===-1) th.classList.add('sort-desc');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      if(dir===0){
+        rows.sort((a,b)=>+a.dataset.origIdx - +b.dataset.origIdx);
+      } else {
+        rows.sort((a,b)=>{
+          const av = a.cells[colIdx]?.textContent.trim()||'';
+          const bv = b.cells[colIdx]?.textContent.trim()||'';
+          const an = parseFloat(av.replace(/[^\d.]/g,''));
+          const bn = parseFloat(bv.replace(/[^\d.]/g,''));
+          if(!isNaN(an)&&!isNaN(bn)) return dir*(an-bn);
+          return dir*av.localeCompare(bv);
+        });
+      }
+      rows.forEach(r=>tbody.appendChild(r));
+    });
+  });
+}
+
+function makeSearchable(input, table){
+  input.addEventListener('input',()=>{
+    const q = input.value.toLowerCase().trim();
+    table.querySelectorAll('tbody tr').forEach(row=>{
+      row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  SCROLL SPY
+// ══════════════════════════════════════════════════════════
+function initScrollSpy(){
+  const links = document.querySelectorAll('.nav-link[data-section]');
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id = e.target.dataset.navId;
+        links.forEach(l=>{
+          l.classList.toggle('active', l.dataset.section===id);
+        });
+      }
+    });
+  },{rootMargin:'-25% 0px -65% 0px',threshold:0});
+  document.querySelectorAll('[data-nav-id]').forEach(el=>obs.observe(el));
+}
+
+// ══════════════════════════════════════════════════════════
+//  FADE-IN
+// ══════════════════════════════════════════════════════════
+function initFadeIn(){
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  },{threshold:0.08});
+  document.querySelectorAll('.fade-in').forEach(el=>obs.observe(el));
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHART.JS — helper config
+// ══════════════════════════════════════════════════════════
+const TT = {
+  backgroundColor:'#1A1C2E',titleColor:'#FFFFFF',bodyColor:'#9DA3C0',
+  borderColor:'#E2E5F1',borderWidth:1,cornerRadius:6,padding:10
+};
+const TICK = {color:'#9DA3C0',font:{family:'DM Mono, monospace',size:11}};
+const GRID = {color:'rgba(226,229,241,.7)'};
+const BORDER = {color:'#E2E5F1'};
+
+/**
+ * initCharts(data) — AI 在產生報告時呼叫此函數填入圖表資料
+ *
+ * @param {Object} data
+ * @param {Object} data.hubs        { labels: string[], values: number[] }  — Top 15 模組被依賴次數
+ * @param {Object} data.gitStatus   { active: number, stale: number, frozen: number }
+ * @param {Object} data.gitTopActive { labels: string[], values: number[] } — 活躍度前 10 模組 commit 數
+ * @param {Object} data.dead        { labels: string[], values: number[] }  — 死碼候選數依模組
+ */
+function initCharts(data){
+  if(!data) return;
+
+  if(data.hubs){
+    new Chart(document.getElementById('chart-hubs'),{
+      type:'bar',
+      data:{
+        labels: data.hubs.labels,
+        datasets:[{
+          data: data.hubs.values,
+          backgroundColor:'rgba(255,107,53,.65)',borderColor:'#FF6B35',
+          borderWidth:1,borderRadius:3,borderSkipped:false
+        }]
+      },
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' '+c.parsed.x+' 個專案依賴',title:items=>data.hubs.labels[items[0].dataIndex]}}},
+        scales:{
+          x:{grid:GRID,ticks:TICK,border:BORDER,beginAtZero:true},
+          y:{grid:{display:false},ticks:{...TICK,callback:(v,i)=>{const l=data.hubs.labels[i];return l&&l.length>16?l.slice(0,14)+'\u2026':l;}},border:BORDER}
+        }
+      }
+    });
+  }
+
+  if(data.gitStatus){
+    new Chart(document.getElementById('chart-git-status'),{
+      type:'doughnut',
+      data:{
+        labels:['ACTIVE','STALE','FROZEN'],
+        datasets:[{
+          data:[data.gitStatus.active, data.gitStatus.stale, data.gitStatus.frozen],
+          backgroundColor:['rgba(16,185,129,.7)','rgba(245,158,11,.7)','rgba(14,165,233,.7)'],
+          borderColor:['#10B981','#F59E0B','#0EA5E9'],borderWidth:1,hoverOffset:6
+        }]
+      },
+      options:{
+        cutout:'62%',responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true,position:'bottom',labels:{color:'#9DA3C0',font:{family:'DM Mono, monospace',size:11},padding:14,boxWidth:12,boxHeight:12}},
+          tooltip:{...TT,callbacks:{label:c=>' '+c.label+': '+c.parsed+' 個'}}
+        }
+      }
+    });
+  }
+
+  if(data.gitTopActive){
+    new Chart(document.getElementById('chart-git-commits'),{
+      type:'bar',
+      data:{
+        labels: data.gitTopActive.labels,
+        datasets:[{
+          data: data.gitTopActive.values,
+          backgroundColor:'rgba(14,165,233,.6)',borderColor:'#0EA5E9',
+          borderWidth:1,borderRadius:3,borderSkipped:false
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' '+c.parsed.y+' commits（2yr）'}}},
+        scales:{
+          x:{grid:{display:false},ticks:{...TICK,maxRotation:40,minRotation:20},border:BORDER},
+          y:{grid:GRID,ticks:TICK,border:BORDER,beginAtZero:true}
+        }
+      }
+    });
+  }
+
+  if(data.dead){
+    new Chart(document.getElementById('chart-dead'),{
+      type:'bar',
+      data:{
+        labels: data.dead.labels,
+        datasets:[{
+          data: data.dead.values,
+          backgroundColor:'rgba(124,58,237,.55)',borderColor:'#7C3AED',
+          borderWidth:1,borderRadius:3,borderSkipped:false
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' '+c.parsed.y+' 個死碼候選'}}},
+        scales:{
+          x:{grid:{display:false},ticks:TICK,border:BORDER},
+          y:{grid:GRID,ticks:{...TICK,stepSize:1},border:BORDER,beginAtZero:true}
+        }
+      }
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// CHART DATA — AI 填入此區段（替換下方注解為 initCharts({...}) 呼叫）
+//
+// 範例格式：
+// initCharts({
+//   hubs:          { labels: ['ModA','ModB',...], values: [48,42,...] },
+//   gitStatus:     { active: 83, stale: 29, frozen: 35 },
+//   gitTopActive:  { labels: ['ModA',...], values: [142,...] },
+//   dead:          { labels: ['ModA',...], values: [8,...] }
+// });
+// ══════════════════════════════════════════════════════════
+// ##CHART_INIT##
 </script>
 </body>
 </html>
