@@ -325,21 +325,29 @@ AI 在執行 Layer 2 前先判斷分析粒度：
 AI 讀取來源：
 1. `.analysis/tmp/preflight-report.json` → .sln 路徑、target framework、build 指令
 2. `.analysis/tmp/dependency-map.json` → 所有 project 正確名稱（模組詞彙表）
-3. Layer 1 分析時記錄的 No-go zones（TIER-2 Hub + 高 TopCallerSites 模組）
+3. Layer 1 分析時記錄的 No-go zones（TIER-2 Hub + 高 TopCallerSites 模組）；若記憶已遺失，從 `.analysis/00-global-map.html` 的 Tier 表重新推導
 
 寫入格式：
 ```markdown
+---
+solution_name: {sln 檔名，不含副檔名，例如 HMIStation}
+build_cmd: {完整 build 指令，例如 dotnet build HMIStation.sln}
+framework: {target framework，例如 net472}
+cs_version: {對應 C# 版本，例如 7.3}
+generated_date: {YYYY-MM-DD}
+---
+
 ## 專案簡介
 {待補充 2 句，描述這個 codebase 是做什麼的}
 
 ## Build 指令
-{從 preflight-report.json 的 slnFiles 推導，例如：dotnet build {sln}}
+{完整 build 指令，與 front-matter build_cmd 相同，可加上說明文字}
 
 ## 語言版本
-{target framework，例如：net472 = C# 7.3，net6.0 = C# 10}
+{framework}（C# {cs_version}）
 
 ## No-go zones（AI 禁止建議重構的區域）
-{自動列出 TIER-2 Hub 模組 + Layer 2 高 TopCallerSites 模組，附理由}
+{格式：`ModuleName` — 原因（每行一個）}
 
 ## 模組詞彙表（所有 C# project 名稱，保持原始大小寫）
 {所有 project 正確名稱，一行一個}

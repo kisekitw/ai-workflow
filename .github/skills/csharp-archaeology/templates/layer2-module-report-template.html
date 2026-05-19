@@ -201,6 +201,144 @@ h1 em{color:var(--violet);font-style:normal}
 .heat-low{color:var(--sky)}
 .heat-label{font-size:10px;color:var(--text3);position:relative;z-index:1;margin-top:.2rem}
 
+/* ── Decision Recommendation card ── */
+.decision-card{
+  border-radius:20px;
+  padding:2rem 2rem 1.75rem;
+  margin-bottom:2rem;
+  border:2px solid transparent;
+  box-shadow:0 4px 24px rgba(0,0,0,.1);
+  position:relative;overflow:hidden;
+}
+.decision-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:5px;
+}
+.decision-card.act-delete{background:var(--coral-bg);border-color:rgba(240,56,79,.25)}
+.decision-card.act-delete::before{background:var(--coral)}
+.decision-card.act-extract{background:var(--sky-bg);border-color:rgba(14,165,233,.25)}
+.decision-card.act-extract::before{background:var(--sky)}
+.decision-card.act-refactor{background:var(--amber-bg);border-color:rgba(245,158,11,.25)}
+.decision-card.act-refactor::before{background:var(--amber)}
+.decision-card.act-leave{background:var(--green-bg);border-color:rgba(16,185,129,.25)}
+.decision-card.act-leave::before{background:var(--green)}
+.decision-top{display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.decision-action-label{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  margin-bottom:.5rem;opacity:.7;
+}
+.decision-action{
+  font-family:var(--display);font-size:38px;font-weight:800;line-height:1;
+}
+.act-delete  .decision-action{color:var(--coral)}
+.act-extract .decision-action{color:var(--sky)}
+.act-refactor .decision-action{color:var(--amber)}
+.act-leave   .decision-action{color:var(--green)}
+.decision-conf-wrap{flex:1}
+.decision-conf-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem;opacity:.7}
+.decision-conf{font-size:13px;font-family:var(--mono);padding:4px 14px;border-radius:20px;display:inline-block;font-weight:600}
+.conf-high{background:rgba(16,185,129,.15);color:var(--green)}
+.conf-medium{background:rgba(245,158,11,.15);color:var(--amber)}
+.conf-low{background:rgba(14,165,233,.15);color:var(--sky)}
+.decision-evidence{
+  display:flex;flex-direction:column;gap:8px;
+  border-top:1px solid rgba(0,0,0,.08);
+  padding-top:1.25rem;margin-top:.25rem;
+}
+.evidence-line{
+  display:flex;gap:10px;align-items:flex-start;
+  font-size:12px;font-family:var(--mono);color:var(--text2);line-height:1.6;
+}
+.evidence-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--text3)}
+.decision-prereq{
+  margin-top:1rem;font-size:12px;font-family:var(--mono);
+  color:var(--text2);background:rgba(0,0,0,.04);
+  border-radius:10px;padding:.75rem 1rem;line-height:1.6;
+}
+.decision-prereq strong{color:var(--text)}
+
+/* ── Test signal KPI ── */
+.kpi-cell.amber{background:var(--amber-bg);border-color:rgba(245,158,11,.2)}
+.kpi-cell.amber .kpi-num{color:var(--amber)}
+.test-has{color:var(--green)}
+.test-none{color:var(--coral)}
+
+/* ── Coupling-in table ── */
+.coupling-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.coupling-header{
+  display:grid;grid-template-columns:2fr 2fr 140px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.coupling-row{
+  display:grid;grid-template-columns:2fr 2fr 140px;
+  padding:.85rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.coupling-row:last-child{border-bottom:none}
+.coupling-row.same-proj{background:rgba(240,56,79,.04);border-left:3px solid var(--coral)}
+.coupling-row.same-proj .coupling-name{color:var(--coral)}
+.coupling-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.coupling-file{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.coupling-scope{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500}
+.scope-same{background:var(--coral-bg);color:var(--coral)}
+.scope-other{background:var(--sky-bg);color:var(--sky)}
+
+/* ── Vitality rows ── */
+.vitality-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.vitality-header{
+  display:grid;grid-template-columns:2fr 1fr 80px 100px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.vitality-row{
+  display:grid;grid-template-columns:2fr 1fr 80px 100px;
+  padding:.85rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.vitality-row:last-child{border-bottom:none}
+.vitality-row:hover{background:var(--bg)}
+.vitality-name{font-size:12px;font-family:var(--mono);color:var(--text);font-weight:500;word-break:break-word}
+.vitality-bar-track{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.vitality-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--violet),#A855F7)}
+.vitality-commits{font-size:12px;font-family:var(--mono);color:var(--violet);text-align:right;font-weight:600}
+.vitality-date{font-size:11px;font-family:var(--mono);color:var(--text3)}
+
+/* ── API section collapse ── */
+.api-section-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:12px;padding:.75rem 1.25rem;
+  cursor:pointer;margin-bottom:.5rem;
+  transition:background .15s;
+  user-select:none;
+}
+.api-section-toggle:hover{background:var(--border)}
+.api-section-label{font-size:12px;font-family:var(--mono);color:var(--text2);font-weight:500}
+.api-section-caret{font-size:14px;color:var(--text3);transition:transform .2s}
+.api-section-caret.open{transform:rotate(180deg)}
+#api-section-body{display:none}
+#api-section-body.open{display:block}
+
 /* ── Warning box ── */
 .warn-box{background:var(--amber-bg);border:1px solid rgba(245,158,11,.3);border-radius:16px;padding:1.25rem 1.5rem;display:flex;gap:12px;align-items:flex-start;margin-top:2rem}
 .warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
@@ -236,10 +374,38 @@ h1 em{color:var(--violet);font-style:normal}
 
   <!-- Site nav -->
   <nav class="site-nav" aria-label="報告導覽">
-    <a class="nav-crumb link" href="00-global-map.html">Layer 1 · 全局地圖</a>
+    <a class="nav-crumb link" href="../00-global-map.html">Layer 1 · 全局地圖</a>
     <span class="nav-sep">›</span>
     <span class="nav-crumb current">Layer 2 · {{MODULE_NAME}}</span>
   </nav>
+
+  <!-- Decision Recommendation Card — PLACED AT TOP -->
+  <!--
+    ##DECISION_RECOMMENDATION## — 替換為 Decision 卡片
+    act- class 控制顏色：act-delete（coral/紅）、act-extract（sky/藍）、
+                         act-refactor（amber/琥珀）、act-leave（green/綠）
+    格式範例：
+    <div class="decision-card act-{delete|extract|refactor|leave}">
+      <div class="decision-top">
+        <div>
+          <div class="decision-action-label">Recommended Action</div>
+          <div class="decision-action">{Delete|Extract|Refactor|Leave alone}</div>
+        </div>
+        <div class="decision-conf-wrap">
+          <div class="decision-conf-label">Confidence</div>
+          <span class="decision-conf conf-{high|medium|low}">{HIGH|MEDIUM|LOW}</span>
+          <div style="font-size:12px;font-family:var(--mono);color:var(--text2);margin-top:.5rem">Target: {{MODULE_NAME}}</div>
+        </div>
+      </div>
+      <div class="decision-evidence">
+        <div class="evidence-line"><span class="evidence-dot"></span><span>{Evidence line 1: Coupling Out}</span></div>
+        <div class="evidence-line"><span class="evidence-dot"></span><span>{Evidence line 2: Dead Surface + Vitality}</span></div>
+        <div class="evidence-line"><span class="evidence-dot"></span><span>{Evidence line 3: Safety Net + Coupling In}</span></div>
+      </div>
+      <div class="decision-prereq"><strong>建議第一步：</strong>{一個具體動作}</div>
+    </div>
+  -->
+  <!-- ##DECISION_RECOMMENDATION## -->
 
   <!-- Header -->
   <div class="report-header">
@@ -259,7 +425,7 @@ h1 em{color:var(--violet);font-style:normal}
   </div>
 
   <!-- KPI -->
-  <div class="kpi-strip">
+  <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr)">
     <div class="kpi-cell violet">
       <div class="kpi-label">對外提供的功能數</div>
       <div class="kpi-num">{{API_COUNT}}</div>
@@ -280,6 +446,17 @@ h1 em{color:var(--violet);font-style:normal}
       <div class="kpi-num">{{UPSTREAM_COUNT}}</div>
       <div class="kpi-note">此模組引用的其他專案</div>
     </div>
+    <!-- ##TEST_SIGNAL## — 替換為 TestCallerCount KPI
+         若 TestCallerCount > 0：class="kpi-cell green"，kpi-num class="test-has"
+         若 TestCallerCount = 0：class="kpi-cell coral"，kpi-num class="test-none"
+         格式範例：
+         <div class="kpi-cell {green|coral}">
+           <div class="kpi-label">測試安全網</div>
+           <div class="kpi-num {test-has|test-none}">{{TEST_CALLER_COUNT}}</div>
+           <div class="kpi-note">{有測試呼叫，可安全重構|無測試覆蓋，重構風險高}</div>
+         </div>
+    -->
+    <!-- ##TEST_SIGNAL## -->
   </div>
 
   <!-- Dependency Map -->
@@ -288,7 +465,7 @@ h1 em{color:var(--violet);font-style:normal}
       <div class="sec-title">上下游關係</div>
       <div class="sec-desc">來自 Layer 1 依賴分析 — 左側：這個模組用到了哪些模組 · 右側：哪些地方在使用這個模組</div>
     </div>
-    <span class="sec-num">01 / 03</span>
+    <span class="sec-num">01 / 06</span>
   </div>
   <div class="dep-map">
     <div class="dep-col">
@@ -330,27 +507,78 @@ h1 em{color:var(--violet);font-style:normal}
     </div>
   </div>
 
-  <!-- Warning — before API table -->
-  <div class="warn-box">
-    <span class="warn-icon">&#9888;&#65039;</span>
-    <div class="warn-text">
-      此報告中 <strong>{{ZERO_CALLERS}} 個對外功能目前在 Solution 內沒有被呼叫到</strong>（下方表格顯示 {{API_COUNT}} 筆全部）。<br>
-      這不代表它們是死碼。{{MODULE_NAME}} 是高依賴模組（{{DOWNSTREAM_COUNT}} 個下游），可能有外部 repo 透過 dll 引用。<br>
-      請執行 <strong>Task A：掃描 cb8/cb9/ure</strong> 確認後，再決定是否標記為死碼候選。
+  <!-- Coupling-In Table -->
+  <div class="sec-head coral">
+    <div>
+      <div class="sec-title">內部耦合：提取阻斷器</div>
+      <div class="sec-desc">模組內部對自身類別的引用 — SAME_PROJECT 項目（紅色）是提取的阻斷器，需先解耦才能提取</div>
     </div>
+    <span class="sec-num">02 / 06</span>
+  </div>
+  <div class="coupling-wrap">
+    <div class="coupling-header">
+      <span>類型名稱</span>
+      <span>引用來源檔案</span>
+      <span>耦合範圍</span>
+    </div>
+    <!--
+      ##COUPLING_IN_ROWS## — 替換為 {Module}-coupling-in.csv 資料列
+      DependencyScope = SAME_PROJECT 的列加 class="coupling-row same-proj"
+      格式範例：
+      <div class="coupling-row {same-proj|}">
+        <span class="coupling-name">{TypeName}</span>
+        <span class="coupling-file">{SourceFile}</span>
+        <span class="coupling-scope scope-{same|other}">SAME_PROJECT</span>
+      </div>
+    -->
+    <!-- ##COUPLING_IN_ROWS## -->
   </div>
 
-  <!-- API Table -->
+  <!-- Vitality Rows -->
+  <div class="sec-head sky">
+    <div>
+      <div class="sec-title">檔案活躍度</div>
+      <div class="sec-desc">過去兩年 git commit 頻率 — 高 churn 檔案重構成本高，低活躍度檔案是刪除候選訊號</div>
+    </div>
+    <span class="sec-num">03 / 06</span>
+  </div>
+  <div class="vitality-wrap">
+    <div class="vitality-header">
+      <span>檔案名稱</span>
+      <span>近兩年活躍度</span>
+      <span>Commits</span>
+      <span>最後修改</span>
+    </div>
+    <!--
+      ##VITALITY_ROWS## — 替換為 {Module}-vitality.csv 資料列
+      vitality-bar width = Commits2yr / max * 100%（max 為同批次最大值）
+      格式範例：
+      <div class="vitality-row">
+        <span class="vitality-name">{File}</span>
+        <div class="vitality-bar-track"><div class="vitality-bar" style="width:{pct}%"></div></div>
+        <span class="vitality-commits">{Commits2yr}</span>
+        <span class="vitality-date">{LastCommit}</span>
+      </div>
+    -->
+    <!-- ##VITALITY_ROWS## -->
+  </div>
+
+  <!-- API Table (collapsible section) -->
   <div class="sec-head amber">
     <div>
       <div class="sec-title">對外提供的功能清單</div>
-      <div class="sec-desc">顯示 {{API_COUNT}} 筆全部 · 點選列展開使用者 · 目前無人使用不代表死碼（可能被外部 dll 引用）</div>
+      <div class="sec-desc">{{API_COUNT}} 筆全部 · 點選列展開使用者 · 無人使用不代表死碼（可能被外部 dll 引用）· 預設收合</div>
     </div>
-    <span class="sec-num">02 / 03</span>
+    <span class="sec-num">04 / 06</span>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
-    <button id="toggle-all-btn" onclick="toggleAll()">展開全部</button>
+  <div class="api-section-toggle" onclick="toggleApiSection()" id="api-section-toggle">
+    <span class="api-section-label">{{API_COUNT}} 個 API — 點擊展開詳細清單</span>
+    <span class="api-section-caret" id="api-caret">▼</span>
   </div>
+  <div id="api-section-body">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+      <button id="toggle-all-btn" onclick="toggleAll()">展開全部</button>
+    </div>
   <div class="api-table">
     <div class="api-header">
       <span></span>
@@ -385,6 +613,7 @@ h1 em{color:var(--violet);font-style:normal}
     -->
     <!-- ##API_ROWS## -->
   </div>
+  </div><!-- /api-section-body -->
 
   <!-- Caller heatmap -->
   <div class="sec-head sky">
@@ -392,7 +621,7 @@ h1 em{color:var(--violet);font-style:normal}
       <div class="sec-title">哪些地方用得最多</div>
       <div class="sec-desc">同專案內的使用者 — 用越多功能代表耦合越深，重構時需優先溝通</div>
     </div>
-    <span class="sec-num">03 / 03</span>
+    <span class="sec-num">06 / 06</span>
   </div>
   <div class="heatmap-legend">
     <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">耦合程度：</span>
@@ -416,6 +645,15 @@ h1 em{color:var(--violet);font-style:normal}
       </div>
     -->
     <!-- ##HEATMAP_CELLS## -->
+  </div>
+
+  <!-- Warning footer -->
+  <div class="warn-box" style="margin-top:2rem">
+    <span class="warn-icon">&#9888;&#65039;</span>
+    <div class="warn-text">
+      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（外部 repo 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
+      在此之前，請勿刪除任何 public 成員。Decision Recommendation 僅基於 solution 內部分析。
+    </div>
   </div>
 
   <div class="report-footer">
@@ -455,6 +693,24 @@ function toggleAll(){
   details.forEach(d => d.classList.toggle('open', allOpen));
   rows.forEach(r => r.classList.toggle('expanded', allOpen));
   document.getElementById('toggle-all-btn').textContent = allOpen ? '收起全部' : '展開全部';
+}
+
+let apiSectionOpen = false;
+function toggleApiSection(){
+  apiSectionOpen = !apiSectionOpen;
+  const body  = document.getElementById('api-section-body');
+  const caret = document.getElementById('api-caret');
+  const lbl   = document.getElementById('api-section-toggle').querySelector('.api-section-label');
+  body.classList.toggle('open', apiSectionOpen);
+  caret.classList.toggle('open', apiSectionOpen);
+  if (!apiSectionOpen) {
+    // collapse all rows when section is closed
+    document.querySelectorAll('.api-detail').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.api-row').forEach(r => r.classList.remove('expanded'));
+    allOpen = false;
+    const btn = document.getElementById('toggle-all-btn');
+    if (btn) btn.textContent = '展開全部';
+  }
 }
 </script>
 </body>

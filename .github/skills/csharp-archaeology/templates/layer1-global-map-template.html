@@ -296,6 +296,87 @@ h1 em{color:var(--orange);font-style:normal}
 .act-delete  .priority-action{background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.3)}
 .act-monitor .priority-action{background:var(--sky-bg);color:var(--sky);border:1px solid rgba(14,165,233,.3)}
 
+/* ── Tier table ── */
+.tier-wrap{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.tier-header{
+  display:grid;grid-template-columns:200px 110px 100px 120px;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.tier-row{
+  display:grid;grid-template-columns:200px 110px 100px 120px;
+  padding:.9rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.tier-row:last-child{border-bottom:none}
+.tier-row:hover{background:var(--bg)}
+.tier-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500}
+.tier-badge{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;text-align:center;display:inline-block;font-weight:500;white-space:nowrap}
+.tier-1{background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.2)}
+.tier-2{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.tier-3{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.tier-dead{font-size:13px;font-family:var(--mono);color:var(--text2);text-align:right}
+
+/* ── Layer2 candidates ── */
+.l2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
+.l2-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:1.5rem 1.25rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  transition:box-shadow .15s;
+}
+.l2-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.l2-rank{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem}
+.l2-name{font-family:var(--display);font-size:18px;font-weight:800;color:var(--text);margin-bottom:.5rem;word-break:break-word}
+.l2-reason{font-size:12px;color:var(--text2);line-height:1.6;font-family:var(--mono)}
+.l2-action{
+  display:inline-block;margin-top:.75rem;
+  font-size:11px;font-family:var(--mono);
+  padding:5px 14px;border-radius:20px;font-weight:500;
+  background:var(--violet-bg);color:var(--violet);
+  border:1px solid rgba(124,58,237,.25);
+}
+
+/* ── Phase handoffs ── */
+.handoff-table{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+.handoff-header{
+  display:grid;grid-template-columns:80px 1fr 2fr;
+  padding:.7rem 1.5rem;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;
+  gap:12px;align-items:center;
+}
+.handoff-row{
+  display:grid;grid-template-columns:80px 1fr 2fr;
+  padding:.9rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;gap:12px;
+  transition:background .12s;
+}
+.handoff-row:last-child{border-bottom:none}
+.handoff-row:hover{background:var(--bg)}
+.handoff-phase{font-size:12px;font-family:var(--mono);font-weight:600;color:var(--violet)}
+.handoff-artifact{font-size:12px;font-family:var(--mono);color:var(--text)}
+.handoff-desc{font-size:11px;color:var(--text3);font-family:var(--mono)}
+
 /* ── Warning box ── */
 .warn-box{
   background:var(--amber-bg);
@@ -417,7 +498,7 @@ h1 em{color:var(--orange);font-style:normal}
       <div class="sec-title">最多人在用的模組</div>
       <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15</div>
     </div>
-    <span class="sec-num">01 / 05</span>
+    <span class="sec-num">01 / 08</span>
   </div>
   <div class="hub-chart">
     <div class="hub-chart-header">
@@ -446,7 +527,7 @@ h1 em{color:var(--orange);font-style:normal}
       <div class="sec-title">沒有人依賴的模組</div>
       <div class="sec-desc">這些模組沒有任何專案引用它 — 刪除優先候選，仍須平行任務（Task A + Task B）確認後才能動</div>
     </div>
-    <span class="sec-num">02 / 05</span>
+    <span class="sec-num">02 / 08</span>
   </div>
   <div class="island-grid">
     <!--
@@ -468,7 +549,7 @@ h1 em{color:var(--orange);font-style:normal}
       <div class="sec-title">最近有人動過嗎？</div>
       <div class="sec-desc">過去兩年 Commit 活躍度 — 沒人動 ≠ 死碼，可能是成熟且核心的模組</div>
     </div>
-    <span class="sec-num">03 / 05</span>
+    <span class="sec-num">03 / 08</span>
   </div>
   <div class="git-wrap">
     <div class="git-header">
@@ -494,13 +575,45 @@ h1 em{color:var(--orange);font-style:normal}
     <!-- ##GIT_ROWS## -->
   </div>
 
+  <!-- Tier Analysis Table -->
+  <div class="sec-head amber">
+    <div>
+      <div class="sec-title">Tier 分析 — 模組優先級</div>
+      <div class="sec-desc">依賴關係 × git 活躍度 × 死碼數量的交叉訊號 — TIER-1 刪除候選、TIER-2 Layer 2 優先、TIER-3 觀察</div>
+    </div>
+    <span class="sec-num">04 / 08</span>
+  </div>
+  <div class="tier-wrap">
+    <div class="tier-header">
+      <span>模組名稱</span>
+      <span>Git 狀態</span>
+      <span>死碼候選數</span>
+      <span>Tier</span>
+    </div>
+    <!--
+      ##TIER_TABLE## — 替換為 AI 計算的 Tier 交叉訊號表
+      Tier 判斷規則：
+        TIER-1（刪除候選）：孤島 AND (FROZEN 或 STALE) AND dead count > 0
+        TIER-2（Layer 2 優先）：Hub 模組 OR dead count 多 OR STALE 但有呼叫者
+        TIER-3（觀察）：ACTIVE 且 dead count 少
+      格式範例：
+      <div class="tier-row">
+        <span class="tier-name">{Module}</span>
+        <span class="git-status s-{active|stale|frozen}">{ACTIVE|STALE|FROZEN}</span>
+        <span class="tier-dead">{N}</span>
+        <span class="tier-badge tier-{1|2|3}">TIER-{1|2|3}</span>
+      </div>
+    -->
+    <!-- ##TIER_TABLE## -->
+  </div>
+
   <!-- Dead Code -->
   <div class="sec-head violet">
     <div>
       <div class="sec-title">可能沒在用的程式碼</div>
       <div class="sec-desc">Private / Internal — 在整個 Solution 內找不到呼叫者。需人工二次確認，Public 成員不在此列</div>
     </div>
-    <span class="sec-num">04 / 05</span>
+    <span class="sec-num">05 / 08</span>
   </div>
   <div class="dead-table">
     <div class="dead-header">
@@ -522,13 +635,35 @@ h1 em{color:var(--orange);font-style:normal}
     <!-- ##DEAD_ROWS## -->
   </div>
 
+  <!-- Layer 2 Candidates -->
+  <div class="sec-head violet">
+    <div>
+      <div class="sec-title">建議 Layer 2 深挖的模組</div>
+      <div class="sec-desc">Top 3 推薦 — 根據 Tier 分析選出，優先投入 Layer 2 分析資源</div>
+    </div>
+    <span class="sec-num">06 / 08</span>
+  </div>
+  <div class="l2-grid">
+    <!--
+      ##LAYER2_CANDIDATES## — 替換為 Top 3 推薦 Layer 2 模組卡片（含一行理由）
+      格式範例：
+      <div class="l2-card">
+        <div class="l2-rank">推薦 #1</div>
+        <div class="l2-name">{ModuleName}</div>
+        <div class="l2-reason">{一行理由，引用具體數據，例如：孤島模組，3 年未動，42 個死碼候選}</div>
+        <span class="l2-action">執行 Layer 2 →</span>
+      </div>
+    -->
+    <!-- ##LAYER2_CANDIDATES## -->
+  </div>
+
   <!-- Priority -->
   <div class="sec-head green">
     <div>
       <div class="sec-title">接下來怎麼做</div>
       <div class="sec-desc">根據依賴關係 + 活躍度綜合判斷，建議優先執行的模組（3–6 項）</div>
     </div>
-    <span class="sec-num">05 / 05</span>
+    <span class="sec-num">07 / 08</span>
   </div>
   <div class="priority-list">
     <!--
@@ -550,11 +685,62 @@ h1 em{color:var(--orange);font-style:normal}
     <!-- ##PRIORITY_ITEMS## -->
   </div>
 
+  <!-- Phase Handoffs -->
+  <div class="sec-head" style="border-bottom-color:var(--text3)">
+    <div>
+      <div class="sec-title">Phase 0 交付物一覽</div>
+      <div class="sec-desc">Phase 0 產出的 artifacts 與對應下游 Phase 的消費者</div>
+    </div>
+    <span class="sec-num">08 / 08</span>
+  </div>
+  <div class="handoff-table">
+    <div class="handoff-header">
+      <span>下游 Phase</span>
+      <span>Artifact</span>
+      <span>用途</span>
+    </div>
+    <!--
+      ##PHASE_HANDOFFS## — 替換為 Phase 0 交付物簡表（依 SKILL.md Phase 0 artifact 清單填入）
+      格式範例：
+      <div class="handoff-row">
+        <span class="handoff-phase">Phase 1</span>
+        <span class="handoff-artifact">copilot-instructions-draft.md</span>
+        <span class="handoff-desc">模組詞彙表、No-go zones、build 指令、語言版本</span>
+      </div>
+    -->
+    <div class="handoff-row">
+      <span class="handoff-phase">Phase 1</span>
+      <span class="handoff-artifact">copilot-instructions-draft.md</span>
+      <span class="handoff-desc">模組詞彙表、No-go zones、build 指令、語言版本</span>
+    </div>
+    <div class="handoff-row">
+      <span class="handoff-phase">Phase 2</span>
+      <span class="handoff-artifact">dead-candidates.csv</span>
+      <span class="handoff-desc">含 FullyQualifiedName，可與 NDepend / Roslyn 交叉比對</span>
+    </div>
+    <div class="handoff-row">
+      <span class="handoff-phase">Phase 3</span>
+      <span class="handoff-artifact">{Module}-report.html</span>
+      <span class="handoff-desc">Layer 2 Decision Recommendation，Pilot 選擇依據</span>
+    </div>
+    <div class="handoff-row">
+      <span class="handoff-phase">Phase 4</span>
+      <span class="handoff-artifact">dependency-map.json</span>
+      <span class="handoff-desc">No-go zones 清單、Layer leakage rules</span>
+    </div>
+    <div class="handoff-row">
+      <span class="handoff-phase">Phase 5</span>
+      <span class="handoff-artifact">00-global-map.html</span>
+      <span class="handoff-desc">全員可視化的模組地圖</span>
+    </div>
+    <!-- ##PHASE_HANDOFFS## -->
+  </div>
+
   <div class="warn-box">
     <span class="warn-icon">&#9888;&#65039;</span>
     <div class="warn-text">
       可能沒在用的程式碼均為 private/internal 層級，可信度僅代表 grep 掃描結果的可信程度。<br>
-      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（cb8/cb9/ure 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
+      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（外部 repo 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
       在此之前，請勿刪除任何 public 成員。
     </div>
   </div>

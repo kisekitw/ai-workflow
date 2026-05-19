@@ -14,6 +14,7 @@ VS Code GitHub Copilot 會自動讀取並在對話中按需載入。
 | Skill | 觸發時機 |
 |-------|---------|
 | `/csharp-archaeology` | Phase 0 考古 — 建立依賴地圖、找死碼候選 |
+| `/copilot-baseline` | Phase 1 基礎建設 — 建立 copilot-instructions.md、prompt library、pre-push hook |
 | `/grill-me` | 任何重大決策前 — 挑戰假設、解析 decision tree |
 
 ## 來自 mattpocock/skills（MIT License）
@@ -27,16 +28,19 @@ VS Code GitHub Copilot 會自動讀取並在對話中按需載入。
 
 ---
 
-## Phase 0 執行順序
+## 執行順序
 
 ```
-Phase 0 開始
+Phase 0 考古
   └─ /grill-with-docs（建立 CONTEXT.md，建立共同語言）
   └─ /csharp-archaeology layer1（全局掃描）
   └─ /grill-me（決定深挖哪個模組）
   └─ /csharp-archaeology layer2（模組深挖）
   └─ /zoom-out（深入某模組需要全局視角時）
   └─ /handoff（Session 結束時）
+
+Phase 1 基礎建設
+  └─ /copilot-baseline（產出 copilot-instructions.md、instructions/、prompts/）
 ```
 
 ---
