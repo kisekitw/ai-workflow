@@ -228,6 +228,35 @@ step0-preflight 第一步自動建立此資料夾並放置 `.gitignore`（`*`）
 
 ---
 
+## Layer 1 Checkpoint — 強制，進入 Layer 2 前執行
+
+Layer 1 所有步驟與 HTML 報告完成後，**必須**依以下順序執行 checkpoint：
+
+### Step A：在 chat 中 surface 關鍵事實
+
+輸出以下摘要（填入實際數字）：
+
+```
+Layer 1 complete. Found {totalProjects} projects, {islandCount} islands,
+{deadCandidateCount} dead candidates. Top hub: {topHubName} (score={topHubScore}).
+Git: {activeCount} ACTIVE / {staleCount} STALE / {frozenCount} FROZEN.
+Top 3 Layer 2 candidates: {A}, {B}, {C}. HTML and parallel-tasks.md written.
+```
+
+### Step B：呼叫 /verify-archaeology
+
+```
+/verify-archaeology
+```
+
+evaluator 會讀取上方 chat 摘要 + 執行 `verify-outputs.ps1 -Layer layer1`，然後回傳：
+- **PASS** → 進入 Layer 2
+- **GAPS** → 修正所有 gap，重新 surface 更新後的數字，再次呼叫 `/verify-archaeology`
+
+> **規則：** 未取得 `/verify-archaeology` 的 PASS，不得進入 Layer 2。
+
+---
+
 ## Layer 2 — 模組深挖
 
 > 目標：了解指定模組的 API 使用關係，產出 Decision Recommendation。
@@ -351,6 +380,33 @@ AI 在執行 Layer 2 前先判斷分析粒度：
 
 ---
 
+## Layer 2 Module Checkpoint — 每個模組完成後執行
+
+每個 Layer 2 模組的 HTML 報告寫出後，**必須**依以下順序執行 checkpoint：
+
+### Step A：在 chat 中 surface 模組事實
+
+輸出以下摘要（填入實際數字）：
+
+```
+{ModuleName}: Decision={Decision}, Confidence={Confidence}.
+{zeroCallerCount}/{apiCount} APIs zero-caller. TestCallerCount={n}.
+git: {status}. coupling-in: {n} SAME_PROJECT. Report written.
+```
+
+### Step B：呼叫 /verify-archaeology
+
+```
+/verify-archaeology
+```
+
+- **PASS** → 進入下一個模組或 Phase 0 Synthesis
+- **GAPS** → 修正所有 gap，重新 surface 更新後的數字，再次呼叫 `/verify-archaeology`
+
+> **規則：** 未取得 `/verify-archaeology` 的 PASS，不得進入下一個模組或 Synthesis。
+
+---
+
 ## Phase 0 Synthesis（所有建議 Layer 2 完成後）
 
 **此步驟無 script，AI 讀取已有 artifacts，直接寫入以下兩個檔案。**
@@ -405,6 +461,34 @@ generated_date: {YYYY-MM-DD}
 步驟：在每個主要 Form 進入點加入結構化 log，部署至 staging，收集 3 個月
 預計工作量：佈建 1 週，等待資料 3–6 個月
 ```
+
+---
+
+## Phase 0 Final Checkpoint — Synthesis 完成後執行
+
+`copilot-instructions-draft.md` 與 `parallel-tasks.md` 最終版寫出後，**必須**執行：
+
+### Step A：在 chat 中 surface Synthesis 事實
+
+```
+Phase 0 Synthesis complete. Strangler Fig pilot: {ModuleName} (Extract, {Confidence}).
+No-go zones documented: {count}. Module vocabulary: {count} entries.
+parallel-tasks.md updated with specific modules and Form classes.
+```
+
+### Step B：呼叫 /verify-archaeology（standalone mode）
+
+```
+/verify-archaeology
+```
+
+evaluator 此時進入 **Mode B**（standalone audit），執行所有 layer 的全面檢查，
+並寫出 `.analysis/verification-report.md`。
+
+- **PASS** → Phase 0 完成
+- **GAPS / FAIL** → 修正後再次呼叫 `/verify-archaeology`
+
+> **規則：** Phase 0 完成的唯一標準是 `/verify-archaeology` 回傳 PASS。
 
 ---
 
