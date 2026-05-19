@@ -30,9 +30,16 @@ $frameworkDist = @{}
 foreach ($proj in $allCsProj) {
   try {
     [xml]$xml = Get-Content $proj.FullName -Encoding UTF8
-    $tf = $xml.SelectSingleNode("//TargetFramework")?.'#text'
-    if (-not $tf) { $tf = $xml.SelectSingleNode("//TargetFrameworks")?.'#text' }
-    if (-not $tf) { $tf = $xml.SelectSingleNode("//TargetFrameworkVersion")?.'#text' }
+    $tfNode = $xml.SelectSingleNode("//TargetFramework")
+    $tf = if ($tfNode) { $tfNode.'#text' } else { $null }
+    if (-not $tf) {
+      $tfNode = $xml.SelectSingleNode("//TargetFrameworks")
+      $tf = if ($tfNode) { $tfNode.'#text' } else { $null }
+    }
+    if (-not $tf) {
+      $tfNode = $xml.SelectSingleNode("//TargetFrameworkVersion")
+      $tf = if ($tfNode) { $tfNode.'#text' } else { $null }
+    }
     if ($tf) {
       $tf = $tf.Trim()
       if ($frameworkDist[$tf]) { $frameworkDist[$tf]++ } else { $frameworkDist[$tf] = 1 }

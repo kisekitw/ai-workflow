@@ -44,6 +44,15 @@ AI 在執行本 skill 的任何步驟時，**只允許**使用以下工具：
 - `rg "pattern" path` → `Get-ChildItem path -Recurse | Select-String "pattern"`
 - `rg "pattern" file -n` → `Select-String -Path file -Pattern "pattern"`
 
+**原則 E：scripts/ 資料夾內容不可修改（嚴格遵守）**
+
+> ⚠️ `.github/skills/csharp-archaeology/scripts/` 下的所有 `.ps1` 檔案是**固化版本**，已針對 PS 5.x 環境測試通過。
+
+- AI **絕對不可以**在 skill 執行期間修改任何 `.ps1` 腳本
+- 即使發現語法可以優化或更簡潔，也不得修改
+- 若腳本有 bug，應在**完成本次分析後**另外回報，而非即時改動
+- 腳本已全面使用 PS 5.x 相容語法（無 `?.`、無 `??=` 等 PS7+ 語法）
+
 **原則 B：兩種輸出格式，目的不同**
 
 | 格式 | 目的 | 對象 |
