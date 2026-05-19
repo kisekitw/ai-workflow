@@ -42,7 +42,21 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
   border-right:1px solid var(--border);
   box-shadow:2px 0 12px rgba(0,0,0,.05);
   display:flex;flex-direction:column;z-index:100;
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
 }
+.sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)))}
+.sidebar-tab{
+  position:fixed;top:50%;left:var(--sidebar-w);transform:translateY(-50%);
+  z-index:200;width:18px;height:52px;
+  background:var(--surface);border:1px solid var(--border);border-left:none;
+  border-radius:0 8px 8px 0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:2px 0 8px rgba(0,0,0,.08);
+  transition:left .25s cubic-bezier(.4,0,.2,1),background .15s,color .15s;
+  color:var(--text3);font-size:10px;user-select:none;
+}
+.sidebar-tab:hover{background:var(--orange-bg);color:var(--orange)}
+.sidebar-tab.collapsed{left:0}
 .sidebar-header{padding:1.25rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0}
 .sidebar-brand{font-family:var(--display);font-size:13px;font-weight:800;color:var(--text);margin-bottom:.2rem}
 .sidebar-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
@@ -79,7 +93,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
 .top-bar{height:4px;background:linear-gradient(90deg,var(--orange),#FF9500);position:sticky;top:0;z-index:50}
 
 /* ── Main content ── */
-.main-content{margin-left:var(--sidebar-w)}
+.main-content{margin-left:var(--sidebar-w);transition:margin-left .25s cubic-bezier(.4,0,.2,1)}
+.main-content.sidebar-collapsed{margin-left:0}
 
 /* ── Zoom wrapper ── */
 #zoom-root{
@@ -363,6 +378,7 @@ h1 em{color:var(--orange);font-style:normal}
     <div class="sidebar-footer-txt">Phase 0 &middot; Layer 1<br>Generated {{DATE}}<br>csharp-archaeology skill</div>
   </div>
 </nav>
+<div class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()" title="收合 / 展開側邊欄">&#9664;</div>
 
 <!-- Main content -->
 <main class="main-content">
@@ -793,6 +809,19 @@ h1 em{color:var(--orange);font-style:normal}
 </main><!-- /main-content -->
 
 <script>
+// ══════════════════════════════════════════════════════════
+//  SIDEBAR TOGGLE
+// ══════════════════════════════════════════════════════════
+function toggleSidebar(){
+  const sidebar = document.getElementById('sidebar');
+  const tab     = document.getElementById('sidebar-tab');
+  const main    = document.querySelector('.main-content');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  tab.classList.toggle('collapsed', collapsed);
+  tab.innerHTML = collapsed ? '&#9654;' : '&#9664;';
+  main.classList.toggle('sidebar-collapsed', collapsed);
+}
+
 // ══════════════════════════════════════════════════════════
 //  ZOOM
 // ══════════════════════════════════════════════════════════
