@@ -211,17 +211,24 @@ step0-preflight 第一步自動建立此資料夾並放置 `.gitignore`（`*`）
 | `{{ISLAND_COUNT}}` | 孤島模組數 |
 | `{{STALE_COUNT}}` | FROZEN + STALE 模組數 |
 | `{{DEAD_COUNT}}` | dead-candidates.csv 總列數 |
+| `{{QUICKWIN_COUNT}}` | TIER-1 模組數（island AND stale/frozen AND 有私有死碼） |
+| `{{TOP_HUB_NAME}}` | hubScore 最高的模組名稱 |
+| `{{TOP_HUB_SCORE}}` | hubScore 最高的分數（被依賴次數） |
 
 **資料區段 marker：**
 
 | Marker | 資料來源 |
 |--------|---------|
-| `<!-- ##HUB_ROWS## -->` | dependency-map.json .hubs Top 15 |
-| `<!-- ##ISLAND_CARDS## -->` | dependency-map.json .islands × git-stability.csv |
+| `<!-- ##HUB_ROWS## -->` | dependency-map.json .hubs Top 15；每列含 ModuleName、HubScore、FileCount |
+| `<!-- ##ISLAND_CARDS## -->` | dependency-map.json .islands × git-stability.csv × dead-candidates.csv；每列含 ModuleName、Git狀態、DeadCount |
+| `<!-- ##GIT_SIGNAL_SUMMARY## -->` | AI 產出 2–4 個解讀 pills（例：「X 個 FROZEN 孤島 = 高價值清除目標」） |
 | `<!-- ##GIT_ROWS## -->` | git-stability.csv 全部 |
 | `<!-- ##TIER_TABLE## -->` | AI 計算的 Tier 交叉訊號表（Module \| Git Status \| Dead Count \| Tier）|
+| `<!-- ##NOGO_ITEMS## -->` | TIER-2 Hub 模組的禁止重構卡片（3–8 個）；格式：nogo-item 帶 nogo-name + nogo-reason |
 | `<!-- ##DEAD_ROWS## -->` | dead-candidates.csv Top 50 |
+| `<!-- ##QUICKWIN_ROWS## -->` | TIER-1 模組列表：island AND (FROZEN\|STALE) AND 有私有死碼；可直接清除 |
 | `<!-- ##LAYER2_CANDIDATES## -->` | Top 3 Layer 2 推薦模組卡片（含一行理由） |
+| `<!-- ##PRIORITY_ITEMS## -->` | AI 根據全部分析綜合判斷的行動建議（3–6 項）；act 類型：act-layer2 / act-delete / act-monitor |
 | `<!-- ##PHASE_HANDOFFS## -->` | Phase 0 交付 artifacts 簡表 |
 
 **Layer 1 完成後，同時產出 `.analysis/parallel-tasks.md` 第一版（模組名稱暫填候選）。**
@@ -369,13 +376,16 @@ AI 在執行 Layer 2 前先判斷分析粒度：
 
 | Marker | 資料來源 |
 |--------|---------|
-| `<!-- ##DECISION_RECOMMENDATION## -->` | Decision 卡片（色碼：Delete=coral，Extract=sky，Refactor=amber，Leave=green） |
+| `<!-- ##DECISION_RECOMMENDATION## -->` | Decision 卡片（色碼：Delete=coral，Extract=sky，Refactor=amber，Leave=green）；含 decision-prereq 與 decision-upgrade 區塊 |
 | `<!-- ##UPSTREAM_ITEMS## -->` | dependency-map.json（此模組的 ProjectReference） |
 | `<!-- ##DOWNSTREAM_ITEMS## -->` | dependency-map.json（誰依賴此模組） |
 | `<!-- ##TEST_SIGNAL## -->` | TestCallerCount KPI（安全網訊號） |
-| `<!-- ##COUPLING_IN_ROWS## -->` | coupling-in.csv（SAME_PROJECT 行標紅） |
-| `<!-- ##VITALITY_ROWS## -->` | vitality.csv 每個檔案活躍度熱力條 |
+| `<!-- ##COUPLING_IN_ROWS## -->` | coupling-in.csv；每列含 TypeName、CouplingType、阻斷類型（AI 由 TypeName 推斷：tag-shared/static/event/instance） |
+| `<!-- ##MODULE_DEAD_ROWS## -->` | dead-candidates.csv 篩選 Module=此模組名稱（Top 20）；無資料時填空列提示 |
+| `<!-- ##VITALITY_ROWS## -->` | vitality.csv 每個檔案活躍度熱力條；含 ApiCount 欄 |
 | `<!-- ##API_ROWS## -->` | usage.csv 全部 API（預設收合，點擊展開） |
+| `<!-- ##KEEP_PUBLIC_ITEMS## -->` | usage.csv 中 CallerCount > 0 的 API 清單（保持 public） |
+| `<!-- ##MAKE_INTERNAL_ITEMS## -->` | usage.csv 中 CallerCount = 0 的 API 清單 Top 10（建議降為 internal） |
 | `<!-- ##HEATMAP_CELLS## -->` | usage.csv 彙總至 project（Top 10） |
 
 ---

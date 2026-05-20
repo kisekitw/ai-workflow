@@ -331,6 +331,7 @@ h1 em{color:var(--violet);font-style:normal}
   .dep-arrow-col{flex-direction:row;padding-top:0}
   .heatmap-grid{grid-template-columns:repeat(2,1fr)}
   .chart-row{grid-template-columns:1fr}
+  .interface-groups{grid-template-columns:1fr}
   h1{font-size:32px}
 }
 
@@ -341,7 +342,7 @@ h1 em{color:var(--violet);font-style:normal}
   #zoom-root{transform:none!important;padding:1rem!important;max-width:100%!important}
   .data-table tr.detail-row.hidden{display:table-row!important}
   #api-section-body{max-height:none!important}
-  .kpi-strip,.decision-card,.report-header{page-break-inside:avoid}
+  .kpi-strip,.decision-card,.report-header,.min-interface-card{page-break-inside:avoid}
   a{text-decoration:none!important}
   .fade-in{opacity:1!important;transform:none!important}
   .data-table{box-shadow:none!important}
@@ -368,6 +369,24 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
     --violet-bg:rgba(124,58,237,.12);--amber-bg:rgba(245,158,11,.12);
   }
 }
+/* ── Decision upgrade path ── */
+.decision-upgrade{margin-top:1rem;font-size:12px;font-family:var(--mono);color:var(--text2);background:rgba(0,0,0,.04);border-radius:10px;padding:.75rem 1rem;line-height:1.6}
+.decision-upgrade strong{color:var(--text)}
+/* ── Minimal public interface ── */
+.min-interface-card{background:var(--surface);border:1px solid var(--violet-bd);border-radius:16px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.min-interface-label{font-size:10px;font-family:var(--mono);letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.75rem}
+.interface-groups{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.interface-group{background:var(--bg);border-radius:12px;padding:1rem}
+.interface-group-title{font-size:11px;font-family:var(--mono);font-weight:600;margin-bottom:.5rem}
+.keep-public .interface-group-title{color:var(--green)}
+.make-internal .interface-group-title{color:var(--amber)}
+.interface-item{font-size:11px;font-family:var(--mono);color:var(--text2);padding:.25rem 0;border-bottom:1px solid var(--border)}
+.interface-item:last-child{border-bottom:none}
+/* ── Coupling pattern tags ── */
+.tag-shared  {background:rgba(240,56,79,.1);  color:var(--coral); border:1px solid rgba(240,56,79,.2)}
+.tag-static  {background:rgba(245,158,11,.1); color:var(--amber); border:1px solid rgba(245,158,11,.2)}
+.tag-instance{background:rgba(14,165,233,.1); color:var(--sky);   border:1px solid rgba(14,165,233,.2)}
+.tag-event   {background:rgba(16,185,129,.1); color:var(--green); border:1px solid rgba(16,185,129,.2)}
 </style>
 </head>
 <body>
@@ -390,8 +409,10 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
     <a class="nav-link" href="#l2-kpi"      data-section="l2-kpi">&#9632; KPI 摘要</a>
     <a class="nav-link" href="#l2-depmap"   data-section="l2-depmap">&#9906; 上下游關係</a>
     <a class="nav-link" href="#l2-coupling" data-section="l2-coupling">&#8644; 內部耦合</a>
+    <a class="nav-link" href="#l2-moddead"  data-section="l2-moddead">&#8856; 模組私有死碼</a>
     <a class="nav-link" href="#l2-vitality" data-section="l2-vitality">&#8635; 檔案活躍度</a>
     <a class="nav-link" href="#l2-api"      data-section="l2-api">&#11835; 對外功能清單</a>
+    <a class="nav-link" href="#l2-minapi"   data-section="l2-minapi">&#9670; 最小對外介面</a>
     <a class="nav-link" href="#l2-heatmap"  data-section="l2-heatmap">&#9651; 使用熱度</a>
     <div class="nav-divider"></div>
     <a class="nav-link" href="layer1-global-map-template.html">&larr; Layer 1 全局地圖</a>
@@ -447,6 +468,7 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
           <div class="evidence-line"><span class="evidence-dot"></span><span>{Evidence 3: Safety Net + Coupling In}</span></div>
         </div>
         <div class="decision-prereq"><strong>建議第一步：</strong>{一個具體動作}</div>
+        <div class="decision-upgrade"><strong>升級信心度的條件：</strong>{例如：Task A 回報外部引用為 0 → 升至 HIGH；TestCallerCount > 0 → 重構安全網就位；解除 N 個 SAME_PROJECT coupling → Extract 可行}</div>
       </div>
     -->
     <!-- ##DECISION_RECOMMENDATION## -->
@@ -589,17 +611,24 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
             <th data-sort>類型名稱</th>
             <th data-sort>引用來源檔案</th>
             <th data-sort>耦合範圍</th>
+            <th data-sort>阻斷類型</th>
           </tr>
         </thead>
         <tbody>
           <!--
             ##COUPLING_IN_ROWS## — 替換為 {Module}-coupling-in.csv 資料列
             DependencyScope = SAME_PROJECT 的列 scope 用 badge-coral，其他用 badge-sky
+            阻斷類型由 TypeName 推斷（AI 分析）：
+              共用類型（tag-shared）：命名含 Helper / Utils / Base / Shared / Common
+              靜態呼叫（tag-static）：TypeName 為已知 static class 或命名含 Static
+              事件訂閱（tag-event）：TypeName 含 EventHandler / Event / Delegate / Args
+              實例引用（tag-instance）：其他一般類型引用
             格式：
             <tr>
               <td class="col-name">{TypeName}</td>
               <td class="col-name" style="color:var(--text3)">{SourceFile}</td>
               <td><span class="badge badge-{coral|sky}">{SAME_PROJECT|OTHER}</span></td>
+              <td><span class="badge tag-{shared|static|event|instance}">{共用類型|靜態呼叫|事件訂閱|實例引用}</span></td>
             </tr>
           -->
           <!-- ##COUPLING_IN_ROWS## -->
@@ -608,7 +637,51 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
     </div>
   </div>
 
-  <!-- 03 Vitality -->
+  <!-- 03 Module Dead Code -->
+  <div id="l2-moddead" data-nav-id="l2-moddead">
+    <div class="sec-head coral fade-in">
+      <div>
+        <div class="sec-title">模組私有死碼</div>
+        <div class="sec-desc">此模組內 private / internal 成員在整個 Solution 內找不到呼叫者 — 來源：Layer 1 dead-candidates.csv 篩選此模組 &middot; 無需等 Task A/B</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋功能名稱..." data-table="tbl-moddead">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-moddead">
+        <thead>
+          <tr>
+            <th data-sort>功能名稱</th>
+            <th data-sort>所在位置</th>
+            <th data-sort>存取層級</th>
+            <th data-sort>可信度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##MODULE_DEAD_ROWS## — 替換為 dead-candidates.csv 中 Module 欄位符合 {{MODULE_NAME}} 的列（Top 20）
+            資料來源：Layer 1 step3-dead-scan.ps1 產出的 dead-candidates.csv
+            可信度判斷（同 Layer 1）：孤島 + FROZEN → 高可信（badge-coral），STALE → 中可信（badge-amber），其他 → 低可信（badge-sky）
+            若 Layer 1 未執行或此模組無私有死碼，填以下提示列：
+            <tr><td colspan="4" style="text-align:center;color:var(--text3);font-family:var(--mono);padding:1.5rem">— 此模組無私有死碼候選，或請先執行 Layer 1 step3-dead-scan —</td></tr>
+            正常格式（RelativePath 含行號，例如 Parser.cs:142）：
+            <tr>
+              <td class="col-name">{Method}</td>
+              <td class="col-name" style="color:var(--text3)">{RelativePath}:{Line}</td>
+              <td><span class="badge badge-dim">{private|internal}</span></td>
+              <td><span class="badge badge-{coral|amber|sky}">{▲ 高可信|● 中可信|▽ 低可信}</span></td>
+            </tr>
+          -->
+          <!-- ##MODULE_DEAD_ROWS## -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 04 Vitality -->
   <div id="l2-vitality" data-nav-id="l2-vitality">
     <div class="sec-head sky fade-in">
       <div>
@@ -632,16 +705,20 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
             <th data-sort>檔案名稱</th>
             <th data-sort>2yr Commits</th>
             <th data-sort>最後修改</th>
+            <th data-sort>含 API 數</th>
           </tr>
         </thead>
         <tbody>
           <!--
             ##VITALITY_ROWS## — 替換為 {Module}-vitality.csv 資料列
+            ApiCount = 從 {Module}-api.json 比對 SourceFile 欄位（依檔名推斷），統計各檔定義的 public API 數
+            交叉訊號：高 Commits + 高 ApiCount → 重構成本高且影響大；低 Commits + 低 ApiCount → 刪除候選訊號
             格式：
             <tr>
               <td class="col-name">{File}</td>
               <td>{Commits2yr}</td>
               <td style="color:var(--text3)">{LastCommit}</td>
+              <td>{ApiCount}</td>
             </tr>
           -->
           <!-- ##VITALITY_ROWS## -->
@@ -650,7 +727,7 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
     </div>
   </div>
 
-  <!-- 04 API Table (collapsible) -->
+  <!-- 05 API Table (collapsible) -->
   <div id="l2-api" data-nav-id="l2-api">
     <div class="sec-head amber fade-in">
       <div>
@@ -693,7 +770,7 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
               <td><span class="expand-btn">+</span></td>
               <td>{API}</td>
               <td><span class="badge badge-{violet|sky}">{類別|功能}</span></td>
-              <td style="color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">{Callers 前三個，或 —}</td>
+              <td class="col-name" style="color:var(--text3);max-width:160px">{Callers 前三個，逗號分隔，或 —}</td>
               <td><span class="count-{zero|few|many}">{CallerCount}</span></td>
             </tr>
             <tr class="detail-row hidden"><td colspan="5">
@@ -712,7 +789,42 @@ button.api-section-toggle{width:100%;text-align:left;border:none;}
     </div>
   </div>
 
-  <!-- 05 Caller Heatmap -->
+  <!-- 06 Minimal Public Interface -->
+  <div id="l2-minapi" data-nav-id="l2-minapi">
+    <div class="sec-head amber fade-in">
+      <div>
+        <div class="sec-title">最小對外介面建議</div>
+        <div class="sec-desc">若 Decision = Extract，僅需保留以下 API 為 public；其餘可降為 internal 以縮小提取邊界 — 僅供參考，public 成員需等 Task A 確認後方可降級</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="min-interface-card fade-in">
+      <div class="min-interface-label">建議的最小對外介面（依 CallerCount 分類，共 {{API_COUNT}} 個 API）</div>
+      <div class="interface-groups">
+        <div class="interface-group keep-public">
+          <div class="interface-group-title">&#9654; 保持 public — 有外部呼叫者（{{HAS_CALLERS}} 個）</div>
+          <!--
+            ##KEEP_PUBLIC_ITEMS## — 替換為 CallerCount > 0 的 API 清單
+            格式（每個 API 一行）：
+            <div class="interface-item">{API 名稱} <span style="color:var(--text3)">（{CallerCount} 個使用者）</span></div>
+          -->
+          <!-- ##KEEP_PUBLIC_ITEMS## -->
+        </div>
+        <div class="interface-group make-internal">
+          <div class="interface-group-title">&#9655; 建議降為 internal — 目前無呼叫（{{ZERO_CALLERS}} 個）</div>
+          <!--
+            ##MAKE_INTERNAL_ITEMS## — 替換為 CallerCount = 0 的 API 清單（Top 10，超過則加提示）
+            注意：zero-caller public API 不代表死碼，可能被外部 dll 引用，需等 Task A 確認後才能降級
+            格式（每個 API 一行）：
+            <div class="interface-item">{API 名稱} <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          -->
+          <!-- ##MAKE_INTERNAL_ITEMS## -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 Caller Heatmap -->
   <div id="l2-heatmap" data-nav-id="l2-heatmap">
     <div class="sec-head sky fade-in">
       <div>

@@ -199,6 +199,7 @@ h1 em{color:var(--orange);font-style:normal}
 .sec-head.amber {border-bottom-color:var(--amber)}
 .sec-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text)}
 .sec-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-top:.3rem}
+.sec-desc strong{color:var(--text2);font-weight:600}
 .sec-num{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;flex-shrink:0;margin-left:1rem}
 
 /* ── Chart wrapper ── */
@@ -339,7 +340,7 @@ h1 em{color:var(--orange);font-style:normal}
   .sidebar,.mobile-tabs,.zoom-bar,.print-bar,.back-top{display:none!important}
   .main-content{margin-left:0!important}
   #zoom-root{transform:none!important;padding:1rem!important;max-width:100%!important}
-  .kpi-strip,.priority-item,.report-header{page-break-inside:avoid}
+  .kpi-strip,.priority-item,.report-header,.nogo-item{page-break-inside:avoid}
   a{text-decoration:none!important}
   .fade-in{opacity:1!important;transform:none!important}
   .data-table{box-shadow:none!important}
@@ -364,6 +365,29 @@ a.kpi-cell{text-decoration:none;display:block}
     --violet-bg:rgba(124,58,237,.12);--amber-bg:rgba(245,158,11,.12);
   }
 }
+/* ── Count classes ── */
+.count-zero{color:var(--text3)}
+.count-few{color:var(--amber);font-weight:700}
+.count-many{color:var(--coral);font-weight:700}
+/* ── No-go zone list ── */
+.nogo-list{display:flex;flex-direction:column;gap:10px;margin-bottom:1rem}
+.nogo-item{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--coral);border-radius:16px;padding:1.25rem 1.5rem;display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);transition:box-shadow .15s}
+.nogo-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.nogo-name{font-size:15px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.3rem}
+.nogo-reason{font-size:12px;color:var(--text2);line-height:1.55}
+.nogo-badge{font-size:11px;font-family:var(--mono);padding:6px 14px;border-radius:20px;background:var(--coral-bg);color:var(--coral);border:1px solid rgba(240,56,79,.3);white-space:nowrap;font-weight:500}
+/* ── Quick wins banner ── */
+.quickwin-banner{background:var(--green-bg);border:1px solid rgba(16,185,129,.25);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;gap:12px;align-items:flex-start}
+.quickwin-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.quickwin-text{font-size:12px;color:var(--text2);line-height:1.7;font-family:var(--mono)}
+.quickwin-text strong{color:var(--text)}
+/* ── Priority prerequisite ── */
+.priority-prereq{font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:.45rem;padding-top:.45rem;border-top:1px solid var(--border);line-height:1.5}
+.priority-prereq strong{color:var(--text2)}
+/* ── Git signal row ── */
+.git-signal-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.git-signal-pill{font-size:11px;font-family:var(--mono);padding:5px 14px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--text2)}
+.git-signal-pill strong{color:var(--text)}
 </style>
 </head>
 <body>
@@ -382,15 +406,17 @@ a.kpi-cell{text-decoration:none;display:block}
   </div>
   <div class="nav-groups">
     <div class="nav-group-title">報告章節</div>
-    <a class="nav-link" href="#l1-kpi"     data-section="l1-kpi">&#9632; KPI 摘要</a>
-    <a class="nav-link" href="#l1-hubs"    data-section="l1-hubs">&#8644; 最多人用的模組</a>
-    <a class="nav-link" href="#l1-islands" data-section="l1-islands">&#9671; 沒人依賴的模組</a>
+    <a class="nav-link" href="#l1-kpi"       data-section="l1-kpi">&#9632; KPI 摘要</a>
+    <a class="nav-link" href="#l1-hubs"      data-section="l1-hubs">&#8644; 最多人用的模組</a>
+    <a class="nav-link" href="#l1-islands"   data-section="l1-islands">&#9671; 沒人依賴的模組</a>
     <a class="nav-link" href="#l1-stability" data-section="l1-stability">&#8635; Git 活躍度</a>
-    <a class="nav-link" href="#l1-tier"    data-section="l1-tier">&#9783; Tier 分析</a>
-    <a class="nav-link" href="#l1-dead"    data-section="l1-dead">&#8856; 死碼候選</a>
+    <a class="nav-link" href="#l1-tier"      data-section="l1-tier">&#9783; Tier 分析</a>
+    <a class="nav-link" href="#l1-nogo"      data-section="l1-nogo">&#9940; No-go 禁止區</a>
+    <a class="nav-link" href="#l1-dead"      data-section="l1-dead">&#8856; 死碼候選</a>
+    <a class="nav-link" href="#l1-quickwins" data-section="l1-quickwins">&#9889; 今日可清除</a>
     <a class="nav-link" href="#l1-candidates" data-section="l1-candidates">&#9670; L2 推薦</a>
-    <a class="nav-link" href="#l1-priority" data-section="l1-priority">&#8594; 行動建議</a>
-    <a class="nav-link" href="#l1-handoffs" data-section="l1-handoffs">&#9783; Phase 交付物</a>
+    <a class="nav-link" href="#l1-priority"  data-section="l1-priority">&#8594; 行動建議</a>
+    <a class="nav-link" href="#l1-handoffs"  data-section="l1-handoffs">&#9783; Phase 交付物</a>
     <div class="nav-divider"></div>
     <a class="nav-link" href="layer2-module-report-template.html">Layer 2 &rarr;</a>
   </div>
@@ -463,11 +489,11 @@ a.kpi-cell{text-decoration:none;display:block}
       <div class="kpi-num">{{DEAD_COUNT}}</div>
       <div class="kpi-note">private/internal，需人工確認</div>
     </a>
-    <a class="kpi-cell amber" href="#l1-hubs">
-      <span class="kpi-icon">&#9733;</span>
-      <div class="kpi-label">最高 Hub 分數</div>
-      <div class="kpi-num">{{TOP_HUB_SCORE}}</div>
-      <div class="kpi-note">{{TOP_HUB_NAME}} 被依賴次數</div>
+    <a class="kpi-cell amber" href="#l1-quickwins">
+      <span class="kpi-icon">&#9889;</span>
+      <div class="kpi-label">今日可清除候選</div>
+      <div class="kpi-num">{{QUICKWIN_COUNT}}</div>
+      <div class="kpi-note">孤島 × 沉睡 × 有私有死碼，無需等 Task A/B</div>
     </a>
   </div>
 
@@ -486,7 +512,7 @@ a.kpi-cell{text-decoration:none;display:block}
     <div class="sec-head fade-in">
       <div>
         <div class="sec-title">最多人在用的模組</div>
-        <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15</div>
+        <div class="sec-desc">改動這些模組影響範圍最大，重構時應最後處理 — 被依賴次數 Top 15 &middot; 最高：<strong>{{TOP_HUB_NAME}}</strong>（{{TOP_HUB_SCORE}} 個依賴）</div>
       </div>
       <span class="sec-num">01 / 09</span>
     </div>
@@ -505,6 +531,7 @@ a.kpi-cell{text-decoration:none;display:block}
             <th data-sort>模組名稱</th>
             <th data-sort>被依賴次數</th>
             <th data-sort>自身依賴數</th>
+            <th data-sort>檔案數</th>
             <th data-sort>風險等級</th>
           </tr>
         </thead>
@@ -512,11 +539,13 @@ a.kpi-cell{text-decoration:none;display:block}
           <!--
             ##HUB_ROWS## — 替換為從 dependency-map.json .hubs Top 15 產生的列
             風險判斷：count/max >= 70% → 高風險，>= 40% → 中風險，其他 → 低風險
+            FileCount = 此專案目錄下 .cs 檔案數（由 preflight-report.json 或 AI 手動計算）
             格式：
             <tr>
               <td class="col-name">{Name}</td>
               <td>{DependentCount}</td>
               <td>{OwnDeps}</td>
+              <td>{FileCount}</td>
               <td><span class="badge badge-{coral|amber|green}">{▲ 高風險|● 中風險|▽ 低風險}</span></td>
             </tr>
           -->
@@ -546,18 +575,21 @@ a.kpi-cell{text-decoration:none;display:block}
             <th data-sort>沉睡年數</th>
             <th data-sort>模組名稱</th>
             <th data-sort>最後修改</th>
+            <th data-sort>死碼數</th>
             <th data-sort>狀態</th>
           </tr>
         </thead>
         <tbody>
           <!--
-            ##ISLAND_CARDS## — 替換為從 dependency-map.json .islands × git-stability.csv 產生的資料列
+            ##ISLAND_CARDS## — 替換為從 dependency-map.json .islands × git-stability.csv × dead-candidates.csv 產生的資料列
             沉睡年數由 LastCommit 距今計算（整數），FROZEN → badge-sky，STALE → badge-amber
+            DeadCount = dead-candidates.csv 中 Module 欄位符合此模組名稱的列數；count-zero=0，count-few=1–5，count-many=6+
             格式：
             <tr>
               <td>{N} 年</td>
               <td class="col-name">{Name}</td>
               <td style="color:var(--text3)">{LastCommit}</td>
+              <td><span class="count-{zero|few|many}">{DeadCount}</span></td>
               <td><span class="badge badge-{sky|amber}">{FROZEN|STALE}</span></td>
             </tr>
           -->
@@ -575,6 +607,17 @@ a.kpi-cell{text-decoration:none;display:block}
         <div class="sec-desc">過去兩年 Commit 活躍度 — 沒人動 &ne; 死碼，可能是成熟且核心的模組</div>
       </div>
       <span class="sec-num">03 / 09</span>
+    </div>
+    <div class="git-signal-row fade-in">
+      <!--
+        ##GIT_SIGNAL_SUMMARY## — 替換為 2–4 個上下文解讀 pills，讓讀者快速理解數字的意義
+        統計方式：從 git-stability.csv × dependency-map.json 交叉計算
+        格式（每個觀察一個 div）：
+        <div class="git-signal-pill">FROZEN 且有依賴者 <strong>{N} 個</strong> → 技術債積累，重構前必確認</div>
+        <div class="git-signal-pill">STALE 孤島 <strong>{M} 個</strong> → TIER-1 刪除候選</div>
+        <div class="git-signal-pill">ACTIVE Hub <strong>{K} 個</strong> → No-go Zone，禁止輕易重構</div>
+      -->
+      <!-- ##GIT_SIGNAL_SUMMARY## -->
     </div>
     <div class="chart-row fade-in">
       <div class="chart-wrap">
@@ -666,7 +709,33 @@ a.kpi-cell{text-decoration:none;display:block}
     </div>
   </div>
 
-  <!-- 05 Dead Code -->
+  <!-- 05 No-go Zones -->
+  <div id="l1-nogo" data-nav-id="l1-nogo">
+    <div class="sec-head coral fade-in">
+      <div>
+        <div class="sec-title">No-go 禁止區</div>
+        <div class="sec-desc">這些模組的爆炸半徑過大，禁止在缺乏完整測試覆蓋與充分評估前進行重構 — 同步寫入 copilot-instructions-draft.md</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="nogo-list fade-in">
+      <!--
+        ##NOGO_ITEMS## — 替換為 TIER-2 Hub 模組的禁止重構卡片（3–8 個）
+        判斷來源：Tier 表中 TIER-2 的高 hubScore 模組；以及分析時觀察到的高 coupling 模組
+        格式：
+        <div class="nogo-item">
+          <div>
+            <div class="nogo-name">{ModuleName}</div>
+            <div class="nogo-reason">被依賴 {DependentCount} 次 &middot; {ACTIVE|STALE} &middot; {原因說明，例如：核心共用型別、無測試覆蓋}</div>
+          </div>
+          <span class="nogo-badge">&#9940; 禁止重構</span>
+        </div>
+      -->
+      <!-- ##NOGO_ITEMS## -->
+    </div>
+  </div>
+
+  <!-- 06 Dead Code -->
   <div id="l1-dead" data-nav-id="l1-dead">
     <div class="sec-head violet fade-in">
       <div>
@@ -711,7 +780,59 @@ a.kpi-cell{text-decoration:none;display:block}
     </div>
   </div>
 
-  <!-- 06 Layer 2 Candidates -->
+  <!-- 07 Quick Wins — 今日可清除 -->
+  <div id="l1-quickwins" data-nav-id="l1-quickwins">
+    <div class="sec-head green fade-in">
+      <div>
+        <div class="sec-title">今日可清除</div>
+        <div class="sec-desc">孤島 × 沉睡 × 有私有死碼 — 這些模組的 private/internal 死碼不需要等 Task A / Task B，可立刻安排清除</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="quickwin-banner fade-in">
+      <span class="quickwin-icon">&#9989;</span>
+      <div class="quickwin-text">
+        <strong>為什麼這些可以立刻動？</strong><br>
+        下方列表均為「沒有任何專案依賴 + private/internal 死碼 + 長期未修改」的模組。<br>
+        private/internal 成員不可能被外部 dll 引用，無需等待 Task A（外部 repo 掃描）或 Task B（Telemetry）確認。<br>
+        建議以 PR 逐步清除，每 PR 一個模組，CI 通過即可 merge。
+      </div>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋模組名稱..." data-table="tbl-quickwins">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-quickwins">
+        <thead>
+          <tr>
+            <th data-sort>模組名稱</th>
+            <th data-sort>私有死碼數</th>
+            <th data-sort>沉睡年數</th>
+            <th data-sort>Git 狀態</th>
+            <th data-sort>建議行動</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!--
+            ##QUICKWIN_ROWS## — 替換為所有 TIER-1 模組的資料列
+            TIER-1 = island AND (FROZEN|STALE) AND dead-candidates.csv 中有此模組的項目
+            格式：
+            <tr>
+              <td class="col-name">{ModuleName}</td>
+              <td><span class="count-many">{DeadCount} 個</span></td>
+              <td>{N} 年</td>
+              <td><span class="badge badge-{sky|amber}">{FROZEN|STALE}</span></td>
+              <td><span class="badge badge-coral">▲ 直接清除</span></td>
+            </tr>
+          -->
+          <!-- ##QUICKWIN_ROWS## -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 08 Layer 2 Candidates -->
   <div id="l1-candidates" data-nav-id="l1-candidates">
     <div class="sec-head violet fade-in">
       <div>
@@ -735,7 +856,7 @@ a.kpi-cell{text-decoration:none;display:block}
     </div>
   </div>
 
-  <!-- 07 Priority -->
+  <!-- 09 Priority -->
   <div id="l1-priority" data-nav-id="l1-priority">
     <div class="sec-head green fade-in">
       <div>
@@ -757,6 +878,7 @@ a.kpi-cell{text-decoration:none;display:block}
           <div>
             <div class="priority-name">{ModuleName}</div>
             <div class="priority-reason">{說明理由，引用具體數據}</div>
+            <div class="priority-prereq"><strong>前置條件：</strong>{條件清單，無則填「無，可立刻開始」}</div>
           </div>
           <span class="priority-action">{行動標籤}</span>
         </div>
@@ -765,7 +887,7 @@ a.kpi-cell{text-decoration:none;display:block}
     </div>
   </div>
 
-  <!-- 08 Phase Handoffs -->
+  <!-- 10 Phase Handoffs -->
   <div id="l1-handoffs" data-nav-id="l1-handoffs">
     <div class="sec-head fade-in" style="border-bottom-color:var(--text3)">
       <div>
