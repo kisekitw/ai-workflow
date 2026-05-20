@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layer 2 &middot; 模組報告 — HMIWafermap</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --bg:        #F4F5FB;
+  --surface:   #FFFFFF;
+  --border:    #E2E5F1;
+  --text:      #1A1C2E;
+  --text2:     #5A5F80;
+  --text3:     #9DA3C0;
+  --orange:    #FF6B35;
+  --orange-bg: #FFF2EC;
+  --coral:     #F0384F;
+  --coral-bg:  #FFF0F2;
+  --green:     #10B981;
+  --green-bg:  #ECFDF5;
+  --sky:       #0EA5E9;
+  --sky-bg:    #E0F2FE;
+  --violet:    #7C3AED;
+  --violet-bg: #F5F3FF;
+  --violet-bd: rgba(124,58,237,.25);
+  --amber:     #F59E0B;
+  --amber-bg:  #FFFBEB;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --body:    'DM Sans', sans-serif;
+  --sidebar-w: 240px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── Sidebar ── */
+.sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--border);box-shadow:2px 0 12px rgba(0,0,0,.05);display:flex;flex-direction:column;z-index:100;transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)))}
+.sidebar-tab{
+  position:fixed;top:50%;left:var(--sidebar-w);transform:translateY(-50%);
+  z-index:200;width:18px;height:52px;
+  background:var(--surface);border:1px solid var(--border);border-left:none;
+  border-radius:0 8px 8px 0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:2px 0 8px rgba(0,0,0,.08);
+  transition:left .25s cubic-bezier(.4,0,.2,1),background .15s,color .15s;
+  color:var(--text3);font-size:10px;user-select:none;
+}
+.sidebar-tab:hover{background:var(--violet-bg);color:var(--violet)}
+.sidebar-tab.collapsed{left:0}
+.sidebar-header{padding:1.25rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.sidebar-brand{font-family:var(--display);font-size:13px;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.sidebar-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+.nav-groups{flex:1;overflow-y:auto;padding:.5rem 0}
+.nav-group-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:.5rem 1rem .25rem}
+.nav-link{display:block;font-family:var(--mono);font-size:11px;color:var(--text2);text-decoration:none;padding:.32rem 1rem .32rem 1.5rem;border-left:2px solid transparent;transition:color .15s,background .15s,border-color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-link:hover{color:var(--text);background:var(--bg)}
+.nav-link.active{color:var(--violet);border-left-color:var(--violet);background:var(--violet-bg)}
+.nav-divider{height:1px;background:var(--border);margin:.5rem 1rem}
+.sidebar-footer{padding:.75rem 1rem;border-top:1px solid var(--border);flex-shrink:0}
+.sidebar-footer-txt{font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.6}
+.sidebar-progress{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--border)}
+.sidebar-progress-fill{height:100%;background:var(--violet);width:0%;transition:width .1s ease}
+
+/* ── Mobile tabs ── */
+.mobile-tabs{display:none;position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);padding:0 1rem;height:48px;align-items:center;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.mobile-tab{font-family:var(--mono);font-size:12px;color:var(--text2);padding:6px 14px;border-radius:20px;text-decoration:none;transition:color .15s,background .15s;border:1px solid transparent}
+.mobile-tab.active{color:var(--violet);background:var(--violet-bg);border-color:var(--violet-bd)}
+
+/* ── Top accent bar ── */
+.top-bar{height:4px;background:linear-gradient(90deg,var(--violet),#A855F7);position:sticky;top:0;z-index:50}
+
+/* ── Main content ── */
+.main-content{margin-left:var(--sidebar-w);transition:margin-left .25s cubic-bezier(.4,0,.2,1)}
+.main-content.sidebar-collapsed{margin-left:0}
+
+/* ── Zoom ── */
+#zoom-root{transform-origin:top center;transition:transform .2s ease;padding:2.5rem 2rem 5rem;max-width:1100px;margin:0 auto}
+.zoom-bar{position:fixed;bottom:1.5rem;right:1.5rem;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:.4rem .65rem;z-index:110;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+.zoom-btn{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;font-family:var(--mono);user-select:none}
+.zoom-btn:hover{background:var(--border);color:var(--text)}
+.zoom-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:center}
+.zoom-reset{font-size:10px;font-family:var(--mono);color:var(--text3);cursor:pointer;padding:0 4px}
+.zoom-reset:hover{color:var(--violet)}
+.back-top{
+  position:fixed;bottom:1.5rem;left:1.5rem;width:36px;height:36px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border);color:var(--text3);font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);transition:background .15s,color .15s,opacity .25s;
+  opacity:0;pointer-events:none;z-index:110;-webkit-appearance:none;appearance:none;padding:0;
+}
+.back-top:hover{background:var(--bg);color:var(--text)}
+.back-top.visible{opacity:1;pointer-events:auto}
+button.zoom-btn{padding:0}
+button.zoom-reset{border:none;background:none}
+button.sidebar-tab{padding:0}
+
+/* ── Print bar ── */
+.print-bar{display:flex;justify-content:flex-end;margin-bottom:1.5rem}
+.print-btn{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:.35rem 1rem;cursor:pointer;transition:color .15s,border-color .15s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.print-btn:hover{color:var(--text);border-color:var(--text3)}
+
+/* ── Header ── */
+.report-header{display:grid;grid-template-columns:1fr auto;gap:2rem;align-items:start;margin-bottom:2.5rem;padding:2rem 0 2rem;border-bottom:2px solid var(--border)}
+.report-stamp{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--violet);text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.report-stamp::before{content:'';width:24px;height:2px;background:var(--violet);display:inline-block;border-radius:1px}
+h1{font-family:var(--display);font-size:44px;font-weight:800;line-height:1.05;color:var(--text);letter-spacing:-.02em}
+h1 em{color:var(--violet);font-style:normal}
+.report-sub{font-size:12px;color:var(--text3);margin-top:.75rem;line-height:1.6;font-family:var(--mono)}
+.meta-pills{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.meta-pill{font-size:11px;font-family:var(--mono);padding:5px 14px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+.meta-pill strong{color:var(--text);font-weight:600}
+
+/* ── KPI strip ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:2.5rem}
+.kpi-cell{background:var(--surface);padding:1.4rem 1.5rem;border-radius:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.kpi-cell.violet{background:var(--violet-bg);border-color:rgba(124,58,237,.2)}
+.kpi-cell.green {background:var(--green-bg); border-color:rgba(16,185,129,.2)}
+.kpi-cell.coral {background:var(--coral-bg); border-color:rgba(240,56,79,.2)}
+.kpi-cell.sky   {background:var(--sky-bg);   border-color:rgba(14,165,233,.2)}
+.kpi-cell.amber {background:var(--amber-bg); border-color:rgba(245,158,11,.2)}
+.kpi-icon{font-size:15px;margin-bottom:.3rem;display:block;opacity:.7}
+.kpi-label{font-size:10px;font-family:var(--mono);letter-spacing:.06em;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem}
+.kpi-num{font-family:var(--display);font-size:48px;font-weight:800;line-height:1;margin-bottom:.3rem}
+.kpi-cell.violet .kpi-num{color:var(--violet)}
+.kpi-cell.green  .kpi-num{color:var(--green)}
+.kpi-cell.coral  .kpi-num{color:var(--coral)}
+.kpi-cell.sky    .kpi-num{color:var(--sky)}
+.kpi-cell.amber  .kpi-num{color:var(--amber)}
+.kpi-note{font-size:11px;color:var(--text2);line-height:1.4}
+.test-has{color:var(--green)}
+.test-none{color:var(--coral)}
+
+/* ── Section heading ── */
+.sec-head{margin-bottom:1.25rem;margin-top:3rem;padding-bottom:.75rem;border-bottom:3px solid var(--violet);display:flex;align-items:flex-end;justify-content:space-between}
+.sec-head.amber{border-bottom-color:var(--amber)}
+.sec-head.sky  {border-bottom-color:var(--sky)}
+.sec-head.coral{border-bottom-color:var(--coral)}
+.sec-head.green{border-bottom-color:var(--green)}
+.sec-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text)}
+.sec-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-top:.3rem}
+.sec-num{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.06em;flex-shrink:0;margin-left:1rem}
+
+/* ── Chart wrapper ── */
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.chart-title{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.75rem}
+
+/* ── Data table ── */
+.table-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:.5rem;flex-wrap:wrap}
+.table-search{font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.32rem .75rem;outline:none;width:220px;transition:border-color .15s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.table-search:focus{border-color:var(--violet)}
+.table-search::placeholder{color:var(--text3)}
+.table-hint{font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:auto}
+.data-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;font-family:var(--mono);font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);margin-bottom:1rem}
+.data-table thead{position:sticky;top:0;z-index:2}
+.data-table thead tr{background:var(--bg);border-bottom:1px solid var(--border)}
+.data-table th{padding:.65rem 1.25rem;text-align:left;font-size:10px;font-family:var(--mono);letter-spacing:.07em;color:var(--text3);text-transform:uppercase;user-select:none;white-space:nowrap}
+.data-table th[data-sort]{cursor:pointer;transition:color .15s}
+.data-table th[data-sort]:hover{color:var(--text)}
+.data-table th.sort-asc::after{content:' \25b2';color:var(--violet)}
+.data-table th.sort-desc::after{content:' \25bc';color:var(--violet)}
+.data-table tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+.data-table tbody tr:last-child{border-bottom:none}
+.data-table tbody tr:nth-child(even):not(.detail-row){background:rgba(0,0,0,.018)}
+.data-table tbody tr:hover:not(.detail-row){background:var(--bg)}
+.data-table td{padding:.7rem 1.25rem;vertical-align:middle}
+.col-name{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.data-table tr.clickable{cursor:pointer}
+.data-table tr.detail-row{background:var(--violet-bg)!important}
+.data-table tr.detail-row td{padding:.6rem 1.25rem .9rem}
+.data-table tr.detail-row.hidden{display:none}
+
+/* ── Badges ── */
+.badge{display:inline-block;font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-coral {background:var(--coral-bg); color:var(--coral); border:1px solid rgba(240,56,79,.2)}
+.badge-amber {background:var(--amber-bg); color:var(--amber); border:1px solid rgba(245,158,11,.2)}
+.badge-green {background:var(--green-bg); color:var(--green); border:1px solid rgba(16,185,129,.2)}
+.badge-sky   {background:var(--sky-bg);   color:var(--sky);   border:1px solid rgba(14,165,233,.2)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-bd)}
+.badge-dim   {background:var(--bg);       color:var(--text3); border:1px solid var(--border)}
+.data-table tbody:empty::after{content:"— 無資料 —";display:block;text-align:center;padding:2rem;font-family:var(--mono);color:var(--text3);font-size:12px}
+.count-zero{color:var(--coral);font-weight:700}
+.count-few {color:var(--amber);font-weight:700}
+.count-many{color:var(--green);font-weight:700}
+
+/* ── Decision card ── */
+.decision-card{border-radius:20px;padding:2rem 2rem 1.75rem;margin-bottom:2rem;border:2px solid transparent;box-shadow:0 4px 24px rgba(0,0,0,.1);position:relative;overflow:hidden}
+.decision-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px}
+.decision-card.act-delete  {background:var(--coral-bg); border-color:rgba(240,56,79,.25)}
+.decision-card.act-delete::before {background:var(--coral)}
+.decision-card.act-extract {background:var(--sky-bg);   border-color:rgba(14,165,233,.25)}
+.decision-card.act-extract::before{background:var(--sky)}
+.decision-card.act-refactor{background:var(--amber-bg); border-color:rgba(245,158,11,.25)}
+.decision-card.act-refactor::before{background:var(--amber)}
+.decision-card.act-leave   {background:var(--green-bg); border-color:rgba(16,185,129,.25)}
+.decision-card.act-leave::before  {background:var(--green)}
+.decision-top{display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.decision-action-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem;opacity:.7}
+.decision-action{font-family:var(--display);font-size:38px;font-weight:800;line-height:1}
+.act-delete  .decision-action{color:var(--coral)}
+.act-extract .decision-action{color:var(--sky)}
+.act-refactor .decision-action{color:var(--amber)}
+.act-leave   .decision-action{color:var(--green)}
+.decision-conf-wrap{flex:1}
+.decision-conf-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem;opacity:.7}
+.decision-conf{font-size:13px;font-family:var(--mono);padding:4px 14px;border-radius:20px;display:inline-block;font-weight:600}
+.conf-high  {background:rgba(16,185,129,.15);color:var(--green)}
+.conf-medium{background:rgba(245,158,11,.15);color:var(--amber)}
+.conf-low   {background:rgba(14,165,233,.15);color:var(--sky)}
+.decision-evidence{display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(0,0,0,.08);padding-top:1.25rem;margin-top:.25rem}
+.evidence-line{display:flex;gap:10px;align-items:flex-start;font-size:12px;font-family:var(--mono);color:var(--text2);line-height:1.6}
+.evidence-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--text3)}
+.decision-prereq{margin-top:1rem;font-size:12px;font-family:var(--mono);color:var(--text2);background:rgba(0,0,0,.04);border-radius:10px;padding:.75rem 1rem;line-height:1.6}
+.decision-prereq strong{color:var(--text)}
+.decision-upgrade{margin-top:1rem;font-size:12px;font-family:var(--mono);color:var(--text2);background:rgba(0,0,0,.04);border-radius:10px;padding:.75rem 1rem;line-height:1.6}
+.decision-upgrade strong{color:var(--text)}
+/* ── Minimal interface ── */
+.min-interface-card{background:var(--surface);border:1px solid var(--violet-bd);border-radius:16px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.min-interface-label{font-size:11px;font-family:var(--mono);color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.75rem}
+.interface-groups{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.interface-group{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1rem}
+.interface-group-title{font-size:11px;font-family:var(--mono);font-weight:600;margin-bottom:.6rem;letter-spacing:.04em}
+.keep-public .interface-group-title{color:var(--green)}
+.make-internal .interface-group-title{color:var(--amber)}
+.interface-item{font-size:11px;font-family:var(--mono);color:var(--text2);padding:.35rem 0;border-bottom:1px solid var(--border);line-height:1.5}
+.interface-item:last-child{border-bottom:none}
+/* ── Coupling tag badges ── */
+.tag-shared  {background:rgba(240,56,79,.1);  color:var(--coral); border:1px solid rgba(240,56,79,.2)}
+.tag-static  {background:rgba(245,158,11,.1); color:var(--amber); border:1px solid rgba(245,158,11,.2)}
+.tag-instance{background:rgba(14,165,233,.1); color:var(--sky);   border:1px solid rgba(14,165,233,.2)}
+.tag-event   {background:rgba(16,185,129,.1); color:var(--green); border:1px solid rgba(16,185,129,.2)}
+/* ── sec-desc strong ── */
+.sec-desc strong{color:var(--text2);font-weight:600}
+/* ── Module dead code ── */
+.count-zero-l2{color:var(--coral);font-weight:700}
+
+/* ── Dependency map ── */
+.dep-map{display:grid;grid-template-columns:1fr 180px 1fr;gap:12px;align-items:start;margin-bottom:1rem}
+.dep-col{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+.dep-col-header{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--bg)}
+.dep-col-label{font-size:10px;font-family:var(--mono);letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:.3rem}
+.dep-col-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.dep-items{padding:.4rem 0}
+.dep-item{display:flex;align-items:center;gap:8px;padding:.5rem 1.25rem;border-bottom:1px solid var(--border);transition:background .12s}
+.dep-item:last-child{border-bottom:none}
+.dep-item:hover{background:var(--bg)}
+.dep-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-up{background:var(--sky)}
+.dot-down{background:var(--violet)}
+.dep-name{font-size:12px;font-family:var(--mono);color:var(--text2)}
+.dep-more{font-size:11px;font-family:var(--mono);color:var(--text3);padding:.4rem 1.25rem}
+.dep-arrow-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding-top:3rem}
+.dep-module-card{background:linear-gradient(135deg,var(--violet-bg),rgba(124,58,237,.04));border:1px solid var(--violet-bd);border-radius:16px;padding:1.25rem 1rem;text-align:center;width:100%;box-shadow:0 4px 16px rgba(124,58,237,.1)}
+.dep-module-name{font-family:var(--display);font-size:15px;font-weight:800;color:var(--violet);margin-bottom:.3rem;word-break:break-all}
+.dep-module-sub{font-size:10px;font-family:var(--mono);color:var(--text3)}
+.arr{font-size:18px;color:var(--text3);font-weight:700}
+
+/* ── API expand button ── */
+.expand-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text3);font-size:12px;cursor:pointer;transition:background .12s,color .12s;flex-shrink:0;font-family:var(--mono)}
+.expand-btn.open{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-bd)}
+.detail-label{font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.5rem}
+.caller-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:.4rem}
+.caller-chip{font-size:11px;font-family:var(--mono);padding:4px 12px;border-radius:20px;background:var(--surface);color:var(--violet);border:1px solid var(--violet-bd)}
+.caller-chip.zero{background:var(--coral-bg);color:var(--coral);border-color:rgba(240,56,79,.2);font-style:italic}
+.toggle-all-btn{font-size:11px;font-family:var(--mono);padding:5px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:background .15s,color .15s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.toggle-all-btn:hover{background:var(--bg);color:var(--text)}
+
+/* ── API section collapse ── */
+.api-section-toggle{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:.75rem 1.25rem;cursor:pointer;margin-bottom:.5rem;transition:background .15s;user-select:none}
+.api-section-toggle:hover{background:var(--border)}
+.api-section-label{font-size:12px;font-family:var(--mono);color:var(--text2);font-weight:500}
+.api-section-caret{font-size:14px;color:var(--text3);transition:transform .2s}
+.api-section-caret.open{transform:rotate(180deg)}
+#api-section-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+#api-section-body.open{max-height:9999px}
+
+/* ── Heatmap ── */
+.heatmap-legend{display:flex;gap:16px;align-items:center;margin-bottom:.75rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono)}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.heatmap-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1rem}
+.heat-cell{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:.85rem;position:relative;overflow:hidden;min-height:120px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);transition:box-shadow .15s}
+.heat-cell:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06)}
+.heat-bar{position:absolute;bottom:0;left:0;right:0;transition:height .3s}
+.heat-cell:has(.heat-high) .heat-bar{background:linear-gradient(to top,rgba(124,58,237,.18),transparent)}
+.heat-cell:has(.heat-mid)  .heat-bar{background:linear-gradient(to top,rgba(245,158,11,.15),transparent)}
+.heat-cell:has(.heat-low)  .heat-bar{background:linear-gradient(to top,rgba(14,165,233,.12),transparent)}
+.heat-name{font-size:11px;font-family:var(--mono);color:var(--text2);font-weight:500;position:relative;z-index:1;margin-bottom:.3rem;word-break:break-word}
+.heat-count{font-family:var(--display);font-size:28px;font-weight:800;position:relative;z-index:1;line-height:1}
+.heat-high{color:var(--violet)}
+.heat-mid {color:var(--amber)}
+.heat-low {color:var(--sky)}
+.heat-label{font-size:10px;color:var(--text3);position:relative;z-index:1;margin-top:.2rem}
+
+/* ── Warn box ── */
+.warn-box{background:var(--amber-bg);border:1px solid rgba(245,158,11,.3);border-radius:16px;padding:1.25rem 1.5rem;display:flex;gap:12px;align-items:flex-start;margin-top:2rem}
+.warn-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.warn-text{font-size:12px;color:var(--text2);line-height:1.7;font-family:var(--mono)}
+.warn-text strong{color:var(--text)}
+
+/* ── Footer ── */
+.report-footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.footer-left{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.footer-right{font-size:11px;font-family:var(--mono);color:var(--text3)}
+
+/* ── Fade-in ── */
+.fade-in{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .mobile-tabs{display:flex}
+  .main-content{margin-left:0;margin-top:48px}
+  #zoom-root{padding:1.5rem 1rem 3rem}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .kpi-strip .kpi-cell:last-child{grid-column:1/-1}
+  .report-header{grid-template-columns:1fr}
+  .meta-pills{align-items:flex-start}
+  .dep-map{grid-template-columns:1fr}
+  .dep-arrow-col{flex-direction:row;padding-top:0}
+  .heatmap-grid{grid-template-columns:repeat(2,1fr)}
+  .interface-groups{grid-template-columns:1fr}
+  h1{font-size:32px}
+}
+
+/* ── Print ── */
+@media print{
+  .sidebar,.mobile-tabs,.zoom-bar,.print-bar,.back-top{display:none!important}
+  .main-content{margin-left:0!important}
+  #zoom-root{transform:none!important;padding:1rem!important;max-width:100%!important}
+  .data-table tr.detail-row.hidden{display:table-row!important}
+  #api-section-body{max-height:none!important}
+  .kpi-strip,.decision-card,.report-header,.min-interface-card{page-break-inside:avoid}
+  a{text-decoration:none!important}
+  .fade-in{opacity:1!important;transform:none!important}
+  .data-table{box-shadow:none!important}
+}
+/* ── Unsorted column indicator ── */
+.data-table th[data-sort]:not(.sort-asc):not(.sort-desc)::after{content:' \21C5';color:var(--text3);font-size:9px}
+/* ── Sticky first column ── */
+.data-table td.col-name:first-child,.data-table th:first-child[data-sort]{position:sticky;left:0;background:inherit;z-index:1}
+.data-table tbody tr:nth-child(even) td.col-name:first-child{background:rgba(0,0,0,.018)}
+.data-table tbody tr:hover td.col-name:first-child{background:var(--bg)}
+/* ── KPI cell clickable ── */
+a.kpi-cell{text-decoration:none;display:block}
+.kpi-cell{cursor:pointer;transition:box-shadow .15s,transform .15s}
+.kpi-cell:hover{box-shadow:0 6px 20px rgba(0,0,0,.12),0 12px 40px rgba(0,0,0,.08);transform:translateY(-2px)}
+/* ── API toggle as button ── */
+button.api-section-toggle{width:100%;text-align:left;border:none;}
+/* ── Dark mode ── */
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0F1117;--surface:#1A1C2E;--border:#2A2D45;
+    --text:#E8EAF6;--text2:#9DA3C0;--text3:#5A5F80;
+    --orange-bg:rgba(255,107,53,.12);--coral-bg:rgba(240,56,79,.12);
+    --green-bg:rgba(16,185,129,.12);--sky-bg:rgba(14,165,233,.12);
+    --violet-bg:rgba(124,58,237,.12);--amber-bg:rgba(245,158,11,.12);
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile tab strip -->
+<div class="mobile-tabs">
+  <a class="mobile-tab" href="layer1-demo.html">&larr; Layer 1</a>
+  <a class="mobile-tab active" href="#">Layer 2 &middot; HMIWafermap</a>
+</div>
+
+<!-- Sticky sidebar -->
+<nav class="sidebar" id="sidebar" aria-label="章節導覽">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">Layer 2 &middot; 模組深挖</div>
+    <div class="sidebar-sub">HMIWafermap</div>
+  </div>
+  <div class="nav-groups">
+    <div class="nav-group-title">報告章節</div>
+    <a class="nav-link" href="#l2-decision" data-section="l2-decision">&#10003; 決策建議</a>
+    <a class="nav-link" href="#l2-kpi"      data-section="l2-kpi">&#9632; KPI 摘要</a>
+    <a class="nav-link" href="#l2-depmap"   data-section="l2-depmap">&#9906; 上下游關係</a>
+    <a class="nav-link" href="#l2-coupling" data-section="l2-coupling">&#8644; 內部耦合</a>
+    <a class="nav-link" href="#l2-moddead"  data-section="l2-moddead">&#8856; 模組私有死碼</a>
+    <a class="nav-link" href="#l2-vitality" data-section="l2-vitality">&#8635; 檔案活躍度</a>
+    <a class="nav-link" href="#l2-api"      data-section="l2-api">&#11835; 對外功能清單</a>
+    <a class="nav-link" href="#l2-minapi"   data-section="l2-minapi">&#9670; 最小對外介面</a>
+    <a class="nav-link" href="#l2-heatmap"  data-section="l2-heatmap">&#9651; 使用熱度</a>
+    <div class="nav-divider"></div>
+    <a class="nav-link" href="layer1-demo.html">&larr; Layer 1 全局地圖</a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-txt">Phase 0 &middot; Layer 2<br>Generated 2026-05-19<br>csharp-archaeology skill</div>
+  </div>
+  <div class="sidebar-progress"><div class="sidebar-progress-fill" id="sidebar-progress-fill"></div></div>
+</nav>
+<button class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()" title="收合 / 展開側邊欄" aria-label="收合 / 展開側邊欄" aria-expanded="true">&#9664;</button>
+
+<!-- Main content -->
+<main class="main-content">
+<div class="top-bar"></div>
+
+<div class="zoom-bar">
+  <button class="zoom-btn" onclick="zoom(-10)" aria-label="縮小">&minus;</button>
+  <span class="zoom-pct" id="pct">100%</span>
+  <button class="zoom-btn" onclick="zoom(+10)" aria-label="放大">+</button>
+  <button class="zoom-reset" onclick="resetZoom()" aria-label="重置縮放">reset</button>
+</div>
+<button class="back-top" id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="回到頂端" title="回到頂端">&#8679;</button>
+
+<div id="zoom-root">
+
+  <!-- Print button -->
+  <div class="print-bar">
+    <button class="print-btn" onclick="window.print()">&#9113; Export / Print</button>
+  </div>
+
+  <!-- Decision Recommendation Card -->
+  <div id="l2-decision" data-nav-id="l2-decision">
+    <div class="decision-card act-refactor fade-in">
+      <div class="decision-top">
+        <div>
+          <div class="decision-action-label">Recommended Action</div>
+          <div class="decision-action">Refactor</div>
+        </div>
+        <div class="decision-conf-wrap">
+          <div class="decision-conf-label">Confidence</div>
+          <span class="decision-conf conf-medium">MEDIUM</span>
+          <div style="font-size:12px;font-family:var(--mono);color:var(--text2);margin-top:.5rem">Target: HMIWafermap</div>
+        </div>
+      </div>
+      <div class="decision-evidence">
+        <div class="evidence-line"><span class="evidence-dot"></span><span>耦合廣：16 個下游依賴（HMIApplication, HMIInspection, HMIShell 等），整體刪除會造成 cascade failure，不建議刪除。</span></div>
+        <div class="evidence-line"><span class="evidence-dot"></span><span>死碼表面：18 個 private 死碼候選（CalculateOffset_V1、LegacyExport_V1 等），佔 API 的 38%；WafermapRenderer 為高 churn 熱點（34 commits / 2yr）。</span></div>
+        <div class="evidence-line"><span class="evidence-dot"></span><span>安全網薄：僅 3 個 Test 呼叫者，主要邏輯無單元測試覆蓋，重構前需先補測試。內部 SAME_PROJECT 耦合 5 處，提取需先解耦。</span></div>
+      </div>
+      <div class="decision-prereq"><strong>建議第一步：</strong>針對 WafermapRenderer 補 unit test（目標 60% 覆蓋率），再清除 CalculateOffset_V1 / LegacyExport_V1 兩個高可信死碼候選。</div>
+      <div class="decision-upgrade"><strong>升級信心度的條件：</strong>TestCallerCount 提升至 10+ → 重構安全網就位可升至 HIGH；解除 WafermapRenderer / WafermapDataAdapter 兩個 SAME_PROJECT coupling → Extract 可行；Task A 回報外部引用 &lt;3 → 可考慮降為 Extract。</div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="report-header fade-in">
+    <div>
+      <div class="report-stamp">Layer 2 &middot; Module Deep-Dive Report</div>
+      <h1><em>HMIWafermap</em><br>模組深挖報告</h1>
+      <p class="report-sub">layer2 &middot; Phase 0 Archaeology &middot; 資料來源：HMIWafermap-api.json &middot; HMIWafermap-usage.csv</p>
+    </div>
+    <div>
+      <div class="meta-pills">
+        <div class="meta-pill">產出日期 <strong>2026-05-19</strong></div>
+        <div class="meta-pill">模組路徑 <strong>src/HMIWafermap/</strong></div>
+        <div class="meta-pill">對外功能 <strong>34 個</strong></div>
+        <div class="meta-pill">被使用次數 <strong>16 個專案</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="kpi-strip fade-in" id="l2-kpi" data-nav-id="l2-kpi">
+    <a class="kpi-cell violet" href="#l2-api">
+      <span class="kpi-icon">&#9830;</span>
+      <div class="kpi-label">對外提供的功能數</div>
+      <div class="kpi-num">34</div>
+      <div class="kpi-note">類別 + 功能合計</div>
+    </a>
+    <a class="kpi-cell green" href="#l2-heatmap">
+      <span class="kpi-icon">&#10003;</span>
+      <div class="kpi-label">有人在用的功能</div>
+      <div class="kpi-num">21</div>
+      <div class="kpi-note">至少 1 個專案使用</div>
+    </a>
+    <a class="kpi-cell coral" href="#l2-api">
+      <span class="kpi-icon">&#8856;</span>
+      <div class="kpi-label">目前無人使用</div>
+      <div class="kpi-num">13</div>
+      <div class="kpi-note">需平行任務確認外部引用</div>
+    </a>
+    <a class="kpi-cell sky" href="#l2-depmap">
+      <span class="kpi-icon">&#9671;</span>
+      <div class="kpi-label">這個模組用到了幾個</div>
+      <div class="kpi-num">4</div>
+      <div class="kpi-note">此模組引用的其他專案</div>
+    </a>
+    <a class="kpi-cell green" href="#l2-heatmap">
+      <span class="kpi-icon">&#9651;</span>
+      <div class="kpi-label">測試安全網</div>
+      <div class="kpi-num test-has">3</div>
+      <div class="kpi-note">有測試呼叫，可安全重構</div>
+    </a>
+  </div>
+
+  <!-- Safety caveat — shown prominently above sections -->
+  <div class="warn-box fade-in">
+    <span class="warn-icon">&#9888;&#65039;</span>
+    <div class="warn-text">
+      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（外部 repo 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
+      在此之前，請勿刪除任何 public 成員。Decision Recommendation 僅基於 solution 內部分析。
+    </div>
+  </div>
+
+  <!-- 01 Dependency Map -->
+  <div id="l2-depmap" data-nav-id="l2-depmap">
+    <div class="sec-head fade-in">
+      <div>
+        <div class="sec-title">上下游關係</div>
+        <div class="sec-desc">來自 Layer 1 依賴分析 — 左側：這個模組用到了哪些模組 &middot; 右側：哪些地方在使用這個模組</div>
+      </div>
+      <span class="sec-num">01 / 05</span>
+    </div>
+    <div class="dep-map fade-in">
+      <div class="dep-col">
+        <div class="dep-col-header">
+          <div class="dep-col-label">這個模組用到了哪些模組</div>
+          <div class="dep-col-title">4 個引用</div>
+        </div>
+        <div class="dep-items">
+          <div class="dep-item"><span class="dep-dot dot-up"></span><span class="dep-name">HMICommon</span></div>
+          <div class="dep-item"><span class="dep-dot dot-up"></span><span class="dep-name">HMIConfig</span></div>
+          <div class="dep-item"><span class="dep-dot dot-up"></span><span class="dep-name">HMIDataModel</span></div>
+          <div class="dep-item"><span class="dep-dot dot-up"></span><span class="dep-name">HMII18n</span></div>
+        </div>
+      </div>
+      <div class="dep-arrow-col">
+        <div class="arr">&#8594;</div>
+        <div class="dep-module-card">
+          <div class="dep-module-name">HMIWafermap</div>
+          <div class="dep-module-sub">目標模組</div>
+        </div>
+        <div class="arr">&#8594;</div>
+      </div>
+      <div class="dep-col">
+        <div class="dep-col-header">
+          <div class="dep-col-label">哪些地方在使用這個模組</div>
+          <div class="dep-col-title">16 個專案</div>
+        </div>
+        <div class="dep-items">
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIApplication</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIInspection</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIReview</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIShell</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIOffline</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMISorter</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIBatchRunner</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMICalibrationWizard</span></div>
+          <div class="dep-item"><span class="dep-dot dot-down"></span><span class="dep-name">HMIDefectMap</span></div>
+          <div class="dep-more">&#8943; 還有 7 個專案</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 Coupling-In -->
+  <div id="l2-coupling" data-nav-id="l2-coupling">
+    <div class="sec-head coral fade-in">
+      <div>
+        <div class="sec-title">內部耦合：提取阻斷器</div>
+        <div class="sec-desc">模組內部對自身類別的引用 — SAME_PROJECT 項目（紅色）是提取的阻斷器，需先解耦才能提取</div>
+      </div>
+      <span class="sec-num">02 / 05</span>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋類型名稱..." data-table="tbl-coupling">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-coupling">
+        <thead>
+          <tr>
+            <th data-sort>類型名稱</th>
+            <th data-sort>引用來源檔案</th>
+            <th data-sort>耦合範圍</th>
+            <th data-sort>阻斷類型</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="col-name">WafermapRenderer</td><td class="col-name" style="color:var(--text3)">WafermapControl.cs</td><td><span class="badge badge-coral">SAME_PROJECT</span></td><td><span class="badge tag-instance">實例引用</span></td></tr>
+          <tr><td class="col-name">WafermapDataAdapter</td><td class="col-name" style="color:var(--text3)">WafermapControl.cs</td><td><span class="badge badge-coral">SAME_PROJECT</span></td><td><span class="badge tag-instance">實例引用</span></td></tr>
+          <tr><td class="col-name">WafermapLayout</td><td class="col-name" style="color:var(--text3)">WafermapControl.cs</td><td><span class="badge badge-coral">SAME_PROJECT</span></td><td><span class="badge tag-shared">共用類型</span></td></tr>
+          <tr><td class="col-name">DieCoordinate</td><td class="col-name" style="color:var(--text3)">WafermapRenderer.cs</td><td><span class="badge badge-coral">SAME_PROJECT</span></td><td><span class="badge tag-shared">共用類型</span></td></tr>
+          <tr><td class="col-name">WafermapTheme</td><td class="col-name" style="color:var(--text3)">WafermapRenderer.cs</td><td><span class="badge badge-coral">SAME_PROJECT</span></td><td><span class="badge tag-shared">共用類型</span></td></tr>
+          <tr><td class="col-name">WafermapRenderer</td><td class="col-name" style="color:var(--text3)">InspectionView.cs</td><td><span class="badge badge-sky">OTHER</span></td><td><span class="badge tag-instance">實例引用</span></td></tr>
+          <tr><td class="col-name">WafermapDataAdapter</td><td class="col-name" style="color:var(--text3)">InspectionView.cs</td><td><span class="badge badge-sky">OTHER</span></td><td><span class="badge tag-instance">實例引用</span></td></tr>
+          <tr><td class="col-name">WafermapLegend</td><td class="col-name" style="color:var(--text3)">ReviewPanel.cs</td><td><span class="badge badge-sky">OTHER</span></td><td><span class="badge tag-shared">共用類型</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 03 Module Dead Code -->
+  <div id="l2-moddead" data-nav-id="l2-moddead">
+    <div class="sec-head coral fade-in">
+      <div>
+        <div class="sec-title">模組私有死碼</div>
+        <div class="sec-desc">此模組內 private / internal 成員在整個 Solution 內找不到呼叫者 — 來源：Layer 1 dead-candidates.csv 篩選此模組 &middot; 無需等 Task A/B</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋功能名稱..." data-table="tbl-moddead">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-moddead">
+        <thead>
+          <tr>
+            <th data-sort>功能名稱</th>
+            <th data-sort>所在位置</th>
+            <th data-sort>存取層級</th>
+            <th data-sort>可信度</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>CalculateOffset_V1</td><td class="col-name" style="color:var(--text3)">WafermapRenderer.cs:218</td><td><span class="badge badge-dim">private</span></td><td><span class="badge badge-coral">▲ 高可信</span></td></tr>
+          <tr><td>LegacyExport_V1()</td><td class="col-name" style="color:var(--text3)">WafermapExportHelper.cs:44</td><td><span class="badge badge-dim">private</span></td><td><span class="badge badge-coral">▲ 高可信</span></td></tr>
+          <tr><td>DrawDieGrid_V1()</td><td class="col-name" style="color:var(--text3)">WafermapRenderer.cs:305</td><td><span class="badge badge-dim">private</span></td><td><span class="badge badge-coral">▲ 高可信</span></td></tr>
+          <tr><td>ConvertToLegacyFormat()</td><td class="col-name" style="color:var(--text3)">LegacyWafermapConverter.cs:88</td><td><span class="badge badge-dim">internal</span></td><td><span class="badge badge-coral">▲ 高可信</span></td></tr>
+          <tr><td>BuildBitmapCache()</td><td class="col-name" style="color:var(--text3)">WafermapRenderer.cs:142</td><td><span class="badge badge-dim">private</span></td><td><span class="badge badge-amber">● 中可信</span></td></tr>
+          <tr><td>ParseV1DieStatus()</td><td class="col-name" style="color:var(--text3)">WafermapDataAdapter.cs:67</td><td><span class="badge badge-dim">private</span></td><td><span class="badge badge-amber">● 中可信</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 04 Vitality -->
+  <div id="l2-vitality" data-nav-id="l2-vitality">
+    <div class="sec-head sky fade-in">
+      <div>
+        <div class="sec-title">檔案活躍度</div>
+        <div class="sec-desc">過去兩年 git commit 頻率 — 高 churn 檔案重構成本高，低活躍度檔案是刪除候選訊號</div>
+      </div>
+      <span class="sec-num">03 / 05</span>
+    </div>
+    <div class="chart-wrap fade-in">
+      <div class="chart-title">各檔案 Commit 數（2yr）</div>
+      <div style="height:220px"><canvas id="chart-vitality" role="img" aria-label="各檔案近兩年 Commit 數活躍度長條圖"></canvas></div>
+    </div>
+    <div class="fade-in">
+      <div class="table-toolbar">
+        <input class="table-search" type="text" placeholder="搜尋檔案名稱..." data-table="tbl-vitality">
+        <span class="table-hint">點擊欄位標題可排序</span>
+      </div>
+      <table class="data-table" id="tbl-vitality">
+        <thead>
+          <tr>
+            <th data-sort>檔案名稱</th>
+            <th data-sort>2yr Commits</th>
+            <th data-sort>最後修改</th>
+            <th data-sort>含 API 數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="col-name">WafermapRenderer.cs</td><td>34</td><td style="color:var(--text3)">2026-05-18</td><td>8</td></tr>
+          <tr><td class="col-name">WafermapControl.cs</td><td>28</td><td style="color:var(--text3)">2026-05-15</td><td>6</td></tr>
+          <tr><td class="col-name">WafermapDataAdapter.cs</td><td>19</td><td style="color:var(--text3)">2026-04-22</td><td>4</td></tr>
+          <tr><td class="col-name">WafermapLayout.cs</td><td>12</td><td style="color:var(--text3)">2026-03-15</td><td>3</td></tr>
+          <tr><td class="col-name">WafermapLegend.cs</td><td>8</td><td style="color:var(--text3)">2026-02-10</td><td>2</td></tr>
+          <tr><td class="col-name">DieCoordinate.cs</td><td>5</td><td style="color:var(--text3)">2025-12-03</td><td>2</td></tr>
+          <tr><td class="col-name">WafermapTheme.cs</td><td>3</td><td style="color:var(--text3)">2025-10-17</td><td>2</td></tr>
+          <tr><td class="col-name">WafermapPrinter.cs</td><td>1</td><td style="color:var(--text3)">2025-07-28</td><td>2</td></tr>
+          <tr><td class="col-name">WafermapExportHelper.cs</td><td>0</td><td style="color:var(--text3)">2024-11-12</td><td>3</td></tr>
+          <tr><td class="col-name">LegacyWafermapConverter.cs</td><td>0</td><td style="color:var(--text3)">2023-08-05</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 04 API Table (collapsible) -->
+  <div id="l2-api" data-nav-id="l2-api">
+    <div class="sec-head amber fade-in">
+      <div>
+        <div class="sec-title">對外提供的功能清單</div>
+        <div class="sec-desc">34 筆全部 &middot; 點選列展開使用者 &middot; 無人使用不代表死碼（可能被外部 dll 引用）&middot; 預設收合</div>
+      </div>
+      <span class="sec-num">04 / 05</span>
+    </div>
+    <button class="api-section-toggle fade-in" onclick="toggleApiSection()" id="api-section-toggle" aria-expanded="false" aria-controls="api-section-body">
+      <span class="api-section-label">34 個 API — 點擊展開詳細清單</span>
+      <span class="api-section-caret" id="api-caret">&#9660;</span>
+    </button>
+    <div id="api-section-body">
+      <div class="fade-in" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <div class="table-toolbar" style="margin-bottom:0">
+          <input class="table-search" type="text" placeholder="搜尋功能名稱..." data-table="tbl-api">
+          <span class="table-hint" style="margin-left:auto">點擊欄位標題可排序</span>
+        </div>
+        <button class="toggle-all-btn" id="toggle-all-btn" onclick="toggleAll()">展開全部</button>
+      </div>
+      <table class="data-table" id="tbl-api">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th data-sort>功能名稱</th>
+            <th data-sort>類型</th>
+            <th data-sort>主要使用者</th>
+            <th data-sort>使用次數</th>
+          </tr>
+        </thead>
+        <tbody id="api-tbody">
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapRenderer</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIApplication, HMIInspection, HMIReview</td>
+            <td><span class="count-many">9</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（9 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIApplication</span><span class="caller-chip">HMIInspection</span><span class="caller-chip">HMIReview</span><span class="caller-chip">HMIShell</span><span class="caller-chip">HMIOffline</span><span class="caller-chip">HMISorter</span><span class="caller-chip">HMIBatchRunner</span><span class="caller-chip">HMIDefectMap</span><span class="caller-chip">HMICalibrationWizard</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapControl</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIShell, HMIApplication</td>
+            <td><span class="count-many">7</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（7 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIShell</span><span class="caller-chip">HMIApplication</span><span class="caller-chip">HMIInspection</span><span class="caller-chip">HMIReview</span><span class="caller-chip">HMIOffline</span><span class="caller-chip">HMISorter</span><span class="caller-chip">HMIBatchRunner</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>RenderDies()</td>
+            <td><span class="badge badge-sky">功能</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIApplication, HMIInspection</td>
+            <td><span class="count-few">5</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（5 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIApplication</span><span class="caller-chip">HMIInspection</span><span class="caller-chip">HMIReview</span><span class="caller-chip">HMIShell</span><span class="caller-chip">HMIOffline</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>SetLayout()</td>
+            <td><span class="badge badge-sky">功能</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIApplication, HMIInspection</td>
+            <td><span class="count-few">3</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（3 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIApplication</span><span class="caller-chip">HMIInspection</span><span class="caller-chip">HMIShell</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapDataAdapter</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIBatchRunner</td>
+            <td><span class="count-few">2</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（2 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIBatchRunner</span><span class="caller-chip">HMIApplication</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>ExportToImage()</td>
+            <td><span class="badge badge-sky">功能</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIReview</td>
+            <td><span class="count-few">1</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（1 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIReview</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapLayout</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td class="col-name" style="color:var(--text3);max-width:160px">HMIShell</td>
+            <td><span class="count-few">1</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（1 個模組）</div>
+            <div class="caller-chips">
+              <span class="caller-chip">HMIShell</span>
+            </div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>DieCoordinate</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td style="color:var(--text3)">—</td>
+            <td><span class="count-zero">0</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（0 個模組）</div>
+            <div class="caller-chips"><span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span></div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapLegend</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td style="color:var(--text3)">—</td>
+            <td><span class="count-zero">0</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（0 個模組）</div>
+            <div class="caller-chips"><span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span></div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>GetDieStatus()</td>
+            <td><span class="badge badge-sky">功能</span></td>
+            <td style="color:var(--text3)">—</td>
+            <td><span class="count-zero">0</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（0 個模組）</div>
+            <div class="caller-chips"><span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span></div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>WafermapTheme</td>
+            <td><span class="badge badge-violet">類別</span></td>
+            <td style="color:var(--text3)">—</td>
+            <td><span class="count-zero">0</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（0 個模組）</div>
+            <div class="caller-chips"><span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span></div>
+          </td></tr>
+          <tr class="clickable" onclick="toggleDetail(this)">
+            <td><span class="expand-btn">+</span></td>
+            <td>LegacyExport_V1()</td>
+            <td><span class="badge badge-sky">功能</span></td>
+            <td style="color:var(--text3)">—</td>
+            <td><span class="count-zero">0</span></td>
+          </tr>
+          <tr class="detail-row hidden"><td colspan="5">
+            <div class="detail-label">使用這個功能的地方（0 個模組）</div>
+            <div class="caller-chips"><span class="caller-chip zero">目前無人使用 — 待確認外部 dll 引用</span></div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 06 Minimal Public Interface -->
+  <div id="l2-minapi" data-nav-id="l2-minapi">
+    <div class="sec-head amber fade-in">
+      <div>
+        <div class="sec-title">最小對外介面建議</div>
+        <div class="sec-desc">若 Decision = Extract，僅需保留以下 API 為 public；其餘可降為 internal 以縮小提取邊界 — 僅供參考，public 成員需等 Task A 確認後方可降級</div>
+      </div>
+      <span class="sec-num"></span>
+    </div>
+    <div class="min-interface-card fade-in">
+      <div class="min-interface-label">建議的最小對外介面（依 CallerCount 分類，共 34 個 API）</div>
+      <div class="interface-groups">
+        <div class="interface-group keep-public">
+          <div class="interface-group-title">&#9654; 保持 public — 有外部呼叫者（21 個）</div>
+          <div class="interface-item">WafermapRenderer <span style="color:var(--text3)">（9 個使用者）</span></div>
+          <div class="interface-item">WafermapControl <span style="color:var(--text3)">（7 個使用者）</span></div>
+          <div class="interface-item">RenderDies() <span style="color:var(--text3)">（5 個使用者）</span></div>
+          <div class="interface-item">SetLayout() <span style="color:var(--text3)">（3 個使用者）</span></div>
+          <div class="interface-item">WafermapDataAdapter <span style="color:var(--text3)">（2 個使用者）</span></div>
+          <div class="interface-item">ExportToImage() <span style="color:var(--text3)">（1 個使用者）</span></div>
+          <div class="interface-item">WafermapLayout <span style="color:var(--text3)">（1 個使用者）</span></div>
+          <div class="interface-item" style="color:var(--text3);font-style:italic">… 還有 14 個，CallerCount ≥ 1</div>
+        </div>
+        <div class="interface-group make-internal">
+          <div class="interface-group-title">&#9655; 建議降為 internal — 目前無呼叫（13 個）</div>
+          <div class="interface-item">DieCoordinate <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          <div class="interface-item">WafermapLegend <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          <div class="interface-item">GetDieStatus() <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          <div class="interface-item">WafermapTheme <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          <div class="interface-item">LegacyExport_V1() <span style="color:var(--coral);font-size:10px">&#9888; 待 Task A 確認</span></div>
+          <div class="interface-item" style="color:var(--text3);font-style:italic">… 還有 8 個，CallerCount = 0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 Caller Heatmap -->
+  <div id="l2-heatmap" data-nav-id="l2-heatmap">
+    <div class="sec-head sky fade-in">
+      <div>
+        <div class="sec-title">哪些地方用得最多</div>
+        <div class="sec-desc">同 Solution 內的使用者 — 用越多功能代表耦合越深，重構時需優先溝通</div>
+      </div>
+      <span class="sec-num">05 / 05</span>
+    </div>
+    <div class="chart-wrap fade-in">
+      <div class="chart-title">各呼叫端使用的 API 數量（Top 10）</div>
+      <div style="height:280px"><canvas id="chart-callers" role="img" aria-label="各呼叫端使用 API 數量 Top 10 長條圖"></canvas></div>
+    </div>
+    <div class="heatmap-legend fade-in">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">耦合程度：</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--violet)"></span><span style="color:var(--violet)">高（&ge;15 個功能）</span></span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span><span style="color:var(--amber)">中（8–14 個功能）</span></span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--sky)"></span><span style="color:var(--sky)">低（&lt;8 個功能）</span></span>
+    </div>
+    <div class="heatmap-grid fade-in">
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:100%"></div>
+        <div class="heat-name">HMIApplication</div>
+        <div class="heat-count heat-high">21</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:81%"></div>
+        <div class="heat-name">HMIInspection</div>
+        <div class="heat-count heat-high">17</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:67%"></div>
+        <div class="heat-name">HMIShell</div>
+        <div class="heat-count heat-mid">14</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:52%"></div>
+        <div class="heat-name">HMIReview</div>
+        <div class="heat-count heat-mid">11</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:38%"></div>
+        <div class="heat-name">HMIBatchRunner</div>
+        <div class="heat-count heat-mid">8</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:29%"></div>
+        <div class="heat-name">HMISorter</div>
+        <div class="heat-count heat-low">6</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:24%"></div>
+        <div class="heat-name">HMIOffline</div>
+        <div class="heat-count heat-low">5</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:19%"></div>
+        <div class="heat-name">HMICalibration&shy;Wizard</div>
+        <div class="heat-count heat-low">4</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:14%"></div>
+        <div class="heat-name">HMIDefectMap</div>
+        <div class="heat-count heat-low">3</div>
+        <div class="heat-label">個功能</div>
+      </div>
+      <div class="heat-cell">
+        <div class="heat-bar" style="height:10%"></div>
+        <div class="heat-name">HMIShellEx</div>
+        <div class="heat-count heat-low">2</div>
+        <div class="heat-label">個功能</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="report-footer fade-in">
+    <span class="footer-left">Phase 0 &middot; Layer 2 &middot; HMIWafermap-report</span>
+    <span class="footer-right">Generated by csharp-archaeology skill &middot; VS Code Copilot Enterprise</span>
+  </div>
+
+</div><!-- /zoom-root -->
+</main><!-- /main-content -->
+
+<script>
+// ── Sidebar Toggle ──
+function toggleSidebar(){
+  const sidebar = document.getElementById('sidebar');
+  const tab     = document.getElementById('sidebar-tab');
+  const main    = document.querySelector('.main-content');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  tab.classList.toggle('collapsed', collapsed);
+  tab.innerHTML = collapsed ? '&#9654;' : '&#9664;';
+  tab.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  main.classList.toggle('sidebar-collapsed', collapsed);
+}
+
+let scale = 1;
+const root = document.getElementById('zoom-root');
+const pct  = document.getElementById('pct');
+function zoom(delta){
+  scale = Math.min(1.5, Math.max(0.4, scale + delta/100));
+  root.style.transform = `scale(${scale})`;
+  pct.textContent = Math.round(scale*100)+'%';
+  document.body.style.minHeight = (root.offsetHeight * scale + 80) + 'px';
+  localStorage.setItem('zoom-l2', scale);
+}
+function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent='100%'; document.body.style.minHeight=''; localStorage.removeItem('zoom-l2'); }
+document.addEventListener('wheel', e=>{
+  if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoom(e.deltaY < 0 ? 10 : -10); }
+},{passive:false});
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.data-table').forEach(makeSortable);
+  document.querySelectorAll('.table-search').forEach(input=>{
+    const tbl = document.getElementById(input.dataset.table);
+    if(tbl) makeSearchable(input, tbl);
+  });
+  initScrollSpy();
+  initFadeIn();
+  // Tooltips for truncated cells
+  document.querySelectorAll('.col-name').forEach(el=>{ el.title = el.textContent.trim(); });
+  // Back-to-top visibility
+  const backTop = document.getElementById('back-top');
+  window.addEventListener('scroll',()=>{ backTop?.classList.toggle('visible', window.scrollY>300); },{passive:true});
+  // Restore zoom from localStorage
+  const _sz = parseFloat(localStorage.getItem('zoom-l2'));
+  if(_sz>=0.4 && _sz<=1.5){ scale=_sz; root.style.transform=`scale(${scale})`; pct.textContent=Math.round(scale*100)+'%'; }
+  // Section auto-numbering
+  const secNums = document.querySelectorAll('.sec-num');
+  const total = secNums.length;
+  secNums.forEach((el,i)=>{ el.textContent = `${String(i+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`; });
+  // Initial row count for table hints
+  document.querySelectorAll('.data-table').forEach(tbl=>{
+    const hint = document.querySelector(`.table-search[data-table="${tbl.id}"]`)
+      ?.closest('.table-toolbar')?.querySelector('.table-hint');
+    if(hint){
+      const n = tbl.querySelectorAll('tbody tr:not(.detail-row)').length;
+      if(n>0) hint.textContent = `${n} 筆 · 點擊欄位標題可排序`;
+    }
+  });
+  // Sidebar scroll progress
+  const progressFill = document.getElementById('sidebar-progress-fill');
+  if(progressFill){
+    window.addEventListener('scroll',()=>{
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      progressFill.style.width = (h>0 ? Math.round(window.scrollY/h*100) : 0)+'%';
+    },{passive:true});
+  }
+});
+
+function makeSortable(table){
+  const tbody = table.querySelector('tbody');
+  if(!tbody) return;
+  Array.from(tbody.querySelectorAll('tr:not(.detail-row)')).forEach((r,i)=>r.dataset.origIdx=i);
+  const allTh = Array.from(table.querySelectorAll('thead th'));
+  table.querySelectorAll('th[data-sort]').forEach(th=>{
+    const colIdx = allTh.indexOf(th);
+    let dir = 0;
+    th.addEventListener('click',()=>{
+      table.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+      dir = dir===0?1:dir===1?-1:0;
+      if(dir===1) th.classList.add('sort-asc');
+      else if(dir===-1) th.classList.add('sort-desc');
+      const rows = Array.from(tbody.querySelectorAll('tr:not(.detail-row)'));
+      if(dir===0){
+        rows.sort((a,b)=>+a.dataset.origIdx - +b.dataset.origIdx);
+      } else {
+        rows.sort((a,b)=>{
+          const av = a.cells[colIdx]?.textContent.trim()||'';
+          const bv = b.cells[colIdx]?.textContent.trim()||'';
+          const an = parseFloat(av.replace(/[^\d.]/g,''));
+          const bn = parseFloat(bv.replace(/[^\d.]/g,''));
+          if(!isNaN(an)&&!isNaN(bn)) return dir*(an-bn);
+          return dir*av.localeCompare(bv);
+        });
+      }
+      rows.forEach(row=>{
+        const nx = row.nextElementSibling;
+        const det = nx?.classList.contains('detail-row')?nx:null;
+        tbody.appendChild(row);
+        if(det) tbody.appendChild(det);
+      });
+      // Re-apply active search filter after sort
+      const srch = document.querySelector(`.table-search[data-table="${table.id}"]`);
+      if(srch && srch.value){
+        const q = srch.value.toLowerCase().trim();
+        Array.from(tbody.querySelectorAll('tr:not(.detail-row)')).forEach(row=>{
+          const show = !q||row.textContent.toLowerCase().includes(q);
+          row.style.display = show?'':'none';
+          const nx = row.nextElementSibling;
+          if(nx?.classList.contains('detail-row')){
+            nx.style.display = (show && !nx.classList.contains('hidden'))?'':'none';
+          }
+        });
+      }
+    });
+  });
+}
+
+function makeSearchable(input, table){
+  const hint = input.closest('.table-toolbar')?.querySelector('.table-hint');
+  input.addEventListener('input',()=>{
+    const q = input.value.toLowerCase().trim();
+    const tbody = table.querySelector('tbody');
+    if(!tbody) return;
+    let visible = 0, total = 0;
+    tbody.querySelectorAll('tr:not(.detail-row)').forEach(row=>{
+      total++;
+      const show = !q || row.textContent.toLowerCase().includes(q);
+      row.style.display = show?'':'none';
+      if(show) visible++;
+      const nx = row.nextElementSibling;
+      if(nx?.classList.contains('detail-row')){
+        nx.style.display = (show && !nx.classList.contains('hidden'))?'':'none';
+      }
+    });
+    if(hint) hint.textContent = q ? `${visible} / ${total} 筆` : '點擊欄位標題可排序';
+  });
+}
+
+function toggleDetail(rowEl){
+  const nx = rowEl.nextElementSibling;
+  if(!nx?.classList.contains('detail-row')) return;
+  const wasHidden = nx.classList.contains('hidden');
+  nx.classList.toggle('hidden',!wasHidden);
+  const btn = rowEl.querySelector('.expand-btn');
+  if(btn){ btn.textContent = wasHidden?'\u2212':'+'; btn.classList.toggle('open',wasHidden); }
+}
+
+let allOpen = false;
+function toggleAll(){
+  allOpen = !allOpen;
+  document.querySelectorAll('#api-tbody .detail-row').forEach(r=>r.classList.toggle('hidden',!allOpen));
+  document.querySelectorAll('#api-tbody tr.clickable .expand-btn').forEach(btn=>{
+    btn.textContent = allOpen?'\u2212':'+'; btn.classList.toggle('open',allOpen);
+  });
+  document.getElementById('toggle-all-btn').textContent = allOpen?'收起全部':'展開全部';
+}
+
+let apiSectionOpen = false;
+function toggleApiSection(){
+  apiSectionOpen = !apiSectionOpen;
+  const body  = document.getElementById('api-section-body');
+  const caret = document.getElementById('api-caret');
+  body.classList.toggle('open', apiSectionOpen);
+  caret.classList.toggle('open', apiSectionOpen);
+  document.getElementById('api-section-toggle').setAttribute('aria-expanded', apiSectionOpen.toString());
+  if(!apiSectionOpen){
+    allOpen = false;
+    const btn = document.getElementById('toggle-all-btn');
+    if(btn) btn.textContent='展開全部';
+  }
+}
+
+function initScrollSpy(){
+  const links = document.querySelectorAll('.nav-link[data-section]');
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id = e.target.dataset.navId;
+        links.forEach(l=>l.classList.toggle('active', l.dataset.section===id));
+      }
+    });
+  },{rootMargin:'-25% 0px -65% 0px',threshold:0});
+  document.querySelectorAll('[data-nav-id]').forEach(el=>obs.observe(el));
+}
+
+function animateCount(el, target, duration=600){
+  const orig = el.textContent;
+  const start = performance.now();
+  const step = ts=>{
+    const p = Math.min((ts-start)/duration, 1);
+    el.textContent = Math.round(p * target);
+    if(p<1) requestAnimationFrame(step);
+    else el.textContent = orig;
+  };
+  requestAnimationFrame(step);
+}
+
+function initFadeIn(){
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+        e.target.querySelectorAll('.kpi-num').forEach(el=>{
+          const n = parseInt(el.textContent.replace(/[^\d]/g,''));
+          if(!isNaN(n) && n > 0) animateCount(el, n);
+        });
+      }
+    });
+  },{threshold:0.08});
+  document.querySelectorAll('.fade-in').forEach(el=>obs.observe(el));
+}
+
+const TT = {backgroundColor:'#1A1C2E',titleColor:'#FFFFFF',bodyColor:'#9DA3C0',borderColor:'#E2E5F1',borderWidth:1,cornerRadius:6,padding:10};
+const TICK = {color:'#9DA3C0',font:{family:'DM Mono, monospace',size:11}};
+const GRID = {color:'rgba(226,229,241,.7)'};
+const BORDER = {color:'#E2E5F1'};
+
+function initCharts(data){
+  if(!data) return;
+  if(data.vitality){
+    new Chart(document.getElementById('chart-vitality'),{
+      type:'bar',
+      data:{labels:data.vitality.labels,datasets:[{data:data.vitality.values,backgroundColor:'rgba(14,165,233,.6)',borderColor:'#0EA5E9',borderWidth:1,borderRadius:3,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' '+c.parsed.y+' commits（2yr）'}}},scales:{x:{grid:{display:false},ticks:{...TICK,maxRotation:40,minRotation:20},border:BORDER},y:{grid:GRID,ticks:{...TICK,stepSize:5},border:BORDER,beginAtZero:true}}}
+    });
+  }
+  if(data.callers){
+    new Chart(document.getElementById('chart-callers'),{
+      type:'bar',
+      data:{labels:data.callers.labels,datasets:[{data:data.callers.values,backgroundColor:'rgba(124,58,237,.6)',borderColor:'#7C3AED',borderWidth:1,borderRadius:3,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:c=>' '+c.parsed.x+' 個 API 使用',title:items=>data.callers.labels[items[0].dataIndex]}}},scales:{x:{grid:GRID,ticks:TICK,border:BORDER,beginAtZero:true},y:{grid:{display:false},ticks:{...TICK,callback:(v,i)=>{const l=data.callers.labels[i];return l&&l.length>16?l.slice(0,14)+'\u2026':l;}},border:BORDER}}}
+    });
+  }
+}
+
+initCharts({
+  vitality: {
+    labels: ['WafermapRenderer.cs','WafermapControl.cs','WafermapDataAdapter.cs','WafermapLayout.cs','WafermapLegend.cs','DieCoordinate.cs','WafermapTheme.cs','WafermapPrinter.cs','WafermapExportHelper.cs','LegacyWafermapConverter.cs'],
+    values: [34,28,19,12,8,5,3,1,0,0]
+  },
+  callers: {
+    labels: ['HMIApplication','HMIInspection','HMIShell','HMIReview','HMIBatchRunner','HMISorter','HMIOffline','HMICalibrationWizard','HMIDefectMap','HMIShellEx'],
+    values: [21,17,14,11,8,6,5,4,3,2]
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  PRINT — canvas → img snapshot
+// ══════════════════════════════════════════════════════════
+window.addEventListener('beforeprint',()=>{
+  document.querySelectorAll('canvas').forEach(c=>{
+    const img=document.createElement('img');
+    img.src=c.toDataURL('image/png');
+    img.style.maxWidth='100%';
+    img.dataset.printProxy='1';
+    c.parentNode.insertBefore(img,c.nextSibling);
+    c.dataset.hiddenForPrint='1';
+    c.style.display='none';
+  });
+});
+window.addEventListener('afterprint',()=>{
+  document.querySelectorAll('[data-print-proxy]').forEach(el=>el.remove());
+  document.querySelectorAll('canvas[data-hidden-for-print]').forEach(c=>{
+    c.style.display='';
+    delete c.dataset.hiddenForPrint;
+  });
+});
+</script>
+</body>
+</html>
