@@ -82,7 +82,7 @@ function Extract-HtmlDecision {
     if (-not (Test-Path $FilePath)) { return $null, $null }
     try {
         $content = Get-Content $FilePath -Raw -Encoding UTF8 -ErrorAction Stop
-        if ($content.Length -gt 3000) { $content = $content.Substring(0, 3000) }
+        if ($content.Length -gt 15000) { $content = $content.Substring(0, 15000) }
         # Pattern 1: data-decision="Extract" or value="Extract"
         $dm = [regex]::Match($content, 'data-decision="([^"]+)"')
         if (-not $dm.Success) {
@@ -204,13 +204,19 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer1")) {
     if (Test-Path $gitStabilityCsv) {
         try {
             $git = Import-Csv $gitStabilityCsv -Encoding UTF8
-            $activeCount = @($git | Where-Object { $_.GitStatus -eq "ACTIVE" }).Count
-            $staleCount  = @($git | Where-Object { $_.GitStatus -eq "STALE"  }).Count
-            $frozenCount = @($git | Where-Object { $_.GitStatus -eq "FROZEN" }).Count
-            $extractedFacts["gitActiveCount"] = $activeCount
-            $extractedFacts["gitStaleCount"]  = $staleCount
-            $extractedFacts["gitFrozenCount"] = $frozenCount
-            $checks.Add((New-Check "S-L1-8" "git-stability.csv parseable with GitStatus column" "PASS" "ACTIVE=$activeCount STALE=$staleCount FROZEN=$frozenCount"))
+            # V6: Validate GitStatus column exists before using it
+            if (@($git).Count -gt 0 -and ($git[0].PSObject.Properties.Name -notcontains "GitStatus")) {
+                $availCols = ($git[0].PSObject.Properties.Name) -join ", "
+                $checks.Add((New-Check "S-L1-8" "git-stability.csv parseable with GitStatus column" "WARN" "Column 'GitStatus' not found. Available columns: $availCols"))
+            } else {
+                $activeCount = @($git | Where-Object { $_.GitStatus -eq "ACTIVE" }).Count
+                $staleCount  = @($git | Where-Object { $_.GitStatus -eq "STALE"  }).Count
+                $frozenCount = @($git | Where-Object { $_.GitStatus -eq "FROZEN" }).Count
+                $extractedFacts["gitActiveCount"] = $activeCount
+                $extractedFacts["gitStaleCount"]  = $staleCount
+                $extractedFacts["gitFrozenCount"] = $frozenCount
+                $checks.Add((New-Check "S-L1-8" "git-stability.csv parseable with GitStatus column" "PASS" "ACTIVE=$activeCount STALE=$staleCount FROZEN=$frozenCount"))
+            }
         } catch {
             $checks.Add((New-Check "S-L1-8" "git-stability.csv parseable with GitStatus column" "FAIL" "Parse/import error: $_"))
         }
@@ -234,6 +240,28 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer1")) {
 if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
     Write-Progress-Safe "Checking Layer 2 outputs..."
 
+    # V4: Pre-load git-stability.csv into a lookup dict for per-module git status
+    $gitStatusByModule = @{}
+    if (Test-Path $gitStabilityCsv) {
+        try {
+            $gitRows = Import-Csv $gitStabilityCsv -Encoding UTF8
+            if (@($gitRows).Count -gt 0) {
+                $nameCol = $null
+                foreach ($candidateCol in @("ModuleName","ProjectName","Project","Name","Assembly")) {
+                    if ($gitRows[0].PSObject.Properties.Name -contains $candidateCol) {
+                        $nameCol = $candidateCol
+                        break
+                    }
+                }
+                if ($null -ne $nameCol) {
+                    foreach ($gitRow in $gitRows) {
+                        $gitStatusByModule[$gitRow.$nameCol] = $gitRow.GitStatus
+                    }
+                }
+            }
+        } catch { }
+    }
+
     # Discover module subfolders (one level deep under .analysis/)
     $moduleData = [ordered]@{}
     if (Test-Path $analysisDir) {
@@ -251,12 +279,22 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
 
             $checks.Add((Check-FileExists "S-L2-$modName-1" "[$modName] api.json exists" $apiJson))
             $checks.Add((Check-FileExists "S-L2-$modName-2" "[$modName] usage.csv exists" $usageCsv))
-            # coupling-in known bug: WARN not FAIL
+            # coupling-in known bug: WARN not FAIL; V3: also check content is non-empty
             if (Test-Path $couplingCsv) {
                 $sz = (Get-Item $couplingCsv).Length
-                $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv exists (known inversion bug — WARN)" "WARN" "File exists ($sz bytes). Note: coupling-in logic currently inverted; data shows intra-module not incoming callers."))
+                try {
+                    $couplingRows = @(Import-Csv $couplingCsv -Encoding UTF8)
+                    $couplingRowCount = $couplingRows.Count
+                    if ($couplingRowCount -eq 0) {
+                        $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv content (known inversion bug — WARN)" "WARN" "File exists but has no data rows (header only). Note: coupling-in logic currently inverted."))
+                    } else {
+                        $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv content (known inversion bug — WARN)" "WARN" "File exists with $couplingRowCount data rows ($sz bytes). Note: coupling-in logic currently inverted; data shows intra-module, not incoming callers."))
+                    }
+                } catch {
+                    $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv content (known inversion bug — WARN)" "WARN" "File exists ($sz bytes) but could not parse as CSV. Note: coupling-in logic currently inverted."))
+                }
             } else {
-                $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv exists (known inversion bug — WARN)" "WARN" "File missing — WARN only due to known inversion bug"))
+                $checks.Add((New-Check "S-L2-$modName-3" "[$modName] coupling-in.csv content (known inversion bug — WARN)" "WARN" "File missing — WARN only due to known inversion bug"))
             }
             $checks.Add((Check-FileExists "S-L2-$modName-4" "[$modName] vitality.csv exists" $vitalityCsv))
             $checks.Add((Check-FileExists "S-L2-$modName-5" "[$modName] report.html exists" $reportHtml))
@@ -272,7 +310,7 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
             } elseif ($null -ne $decision) {
                 $checks.Add((New-Check "S-L2-$modName-7" "[$modName] Decision value is valid" "PASS" "Decision=$decision"))
             } else {
-                $checks.Add((New-Check "S-L2-$modName-7" "[$modName] Decision value is valid" "WARN" "Could not extract Decision from report HTML"))
+                $checks.Add((New-Check "S-L2-$modName-7" "[$modName] Decision value is valid" "FAIL" "Could not extract Decision from report HTML (checked first 15000 chars) — verify data-decision attribute exists in template"))
             }
 
             # Validate confidence value
@@ -282,7 +320,24 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
             } elseif ($null -ne $confidence) {
                 $checks.Add((New-Check "S-L2-$modName-8" "[$modName] Confidence value is valid" "PASS" "Confidence=$confidence"))
             } else {
-                $checks.Add((New-Check "S-L2-$modName-8" "[$modName] Confidence value is valid" "WARN" "Could not extract Confidence from report HTML"))
+                $checks.Add((New-Check "S-L2-$modName-8" "[$modName] Confidence value is valid" "FAIL" "Could not extract Confidence from report HTML (checked first 15000 chars) — verify HIGH/MEDIUM/LOW appears in template output"))
+            }
+
+            # V1: Extract apiCount from api.json
+            $apiCount = 0
+            if (Test-Path $apiJson) {
+                try {
+                    $apiContent = Get-Content $apiJson -Raw -Encoding UTF8 | ConvertFrom-Json
+                    if ($apiContent -is [System.Array]) {
+                        $apiCount = $apiContent.Count
+                    } elseif ($apiContent.PSObject.Properties.Name -contains "items") {
+                        $apiCount = @($apiContent.items).Count
+                    } elseif ($apiContent.PSObject.Properties.Name -contains "apis") {
+                        $apiCount = @($apiContent.apis).Count
+                    }
+                } catch {
+                    # non-fatal: apiCount stays 0
+                }
             }
 
             # Extract usage facts
@@ -291,6 +346,18 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
             if (Test-Path $usageCsv) {
                 try {
                     $usage = Import-Csv $usageCsv -Encoding UTF8
+                    # V6: Validate required columns exist
+                    if (@($usage).Count -gt 0) {
+                        $usageCols = $usage[0].PSObject.Properties.Name
+                        $missingCols = @()
+                        if ($usageCols -notcontains "ZeroCaller")      { $missingCols += "ZeroCaller" }
+                        if ($usageCols -notcontains "TestCallerCount") { $missingCols += "TestCallerCount" }
+                        if ($missingCols.Count -gt 0) {
+                            $checks.Add((New-Check "S-L2-$modName-9" "[$modName] usage.csv has required columns" "WARN" "Missing: $($missingCols -join ', '). Available: $($usageCols -join ', ')"))
+                        } else {
+                            $checks.Add((New-Check "S-L2-$modName-9" "[$modName] usage.csv has required columns" "PASS" "ZeroCaller and TestCallerCount confirmed"))
+                        }
+                    }
                     $zeroCallerCount = @($usage | Where-Object { $_.ZeroCaller -eq "true" -or $_.ZeroCaller -eq "True" -or $_.ZeroCaller -eq "1" }).Count
                     $testCallerCount = 0
                     foreach ($row in $usage) {
@@ -303,11 +370,16 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "layer2")) {
                 }
             }
 
+            # V4: Lookup per-module git status from pre-loaded dict
+            $modGitStatus = if ($gitStatusByModule.ContainsKey($modName)) { $gitStatusByModule[$modName] } else { "UNKNOWN" }
+
             $moduleData[$modName] = [ordered]@{
-                extractedDecision  = $decision
+                extractedDecision   = $decision
                 extractedConfidence = $confidence
-                zeroCallerCount    = $zeroCallerCount
-                testCallerCount    = $testCallerCount
+                zeroCallerCount     = $zeroCallerCount
+                testCallerCount     = $testCallerCount
+                apiCount            = $apiCount
+                gitStatus           = $modGitStatus
             }
         }
     }
@@ -330,6 +402,18 @@ if ($null -eq $fatalError -and ($Layer -eq "all" -or $Layer -eq "synthesis")) {
             $hasVocab = $ci -match "(?i)(module|vocabulary|詞彙)"
             if ($hasNoGo) {
                 $checks.Add((New-Check "S-SYN-3" "copilot-instructions-draft.md has No-go zones section" "PASS" "Section found"))
+                # V5: Check the section has actual content beyond the heading
+                $noGoMatch = [regex]::Match($ci, '(?s)## No-go zones\s*\r?\n(.*?)(?:\r?\n## |\z)')
+                if ($noGoMatch.Success) {
+                    $noGoLines = @($noGoMatch.Groups[1].Value -split '\r?\n' | Where-Object { $_.Trim().Length -gt 0 })
+                    if ($noGoLines.Count -eq 0) {
+                        $checks.Add((New-Check "S-SYN-3b" "No-go zones section has content" "WARN" "Section heading present but no content — section may be empty or placeholder only"))
+                    } else {
+                        $checks.Add((New-Check "S-SYN-3b" "No-go zones section has content" "PASS" "$($noGoLines.Count) line(s) of content found"))
+                    }
+                } else {
+                    $checks.Add((New-Check "S-SYN-3b" "No-go zones section has content" "WARN" "Could not extract section body for content validation"))
+                }
             } else {
                 $checks.Add((New-Check "S-SYN-3" "copilot-instructions-draft.md has No-go zones section" "FAIL" "No-go zones section missing"))
             }
@@ -371,7 +455,7 @@ $failed  = @($checks | Where-Object { $_.result -eq "FAIL" }).Count
 # ── output ────────────────────────────────────────────────────────────────────
 
 $output = [ordered]@{
-    scriptVersion            = "1.1"
+    scriptVersion            = "1.2"
     executedAt               = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     targetLayer              = $Layer
     targetWorkspace          = $TargetWorkspace

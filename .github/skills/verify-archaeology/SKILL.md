@@ -81,6 +81,8 @@ Read the executor's most recent summary statement in chat. Extract claimed value
 | "Top hub: {Name} (score={S})" | `extractedFacts.topHubName` + `extractedFacts.topHubScore` |
 | "Git: {A} ACTIVE / {S} STALE / {F} FROZEN" | `extractedFacts.gitActiveCount/Stale/Frozen` |
 | "{ModuleName}: Decision={D}, Confidence={C}" | `extractedFacts.layer2Modules.{ModuleName}.extractedDecision/Confidence` |
+| "{ModuleName}: {N}/{Total} APIs zero-caller" | `extractedFacts.layer2Modules.{ModuleName}.zeroCallerCount` vs `.apiCount` |
+| "{ModuleName}: git={STATUS}" | `extractedFacts.layer2Modules.{ModuleName}.gitStatus` |
 
 Any discrepancy between claimed and actual = **MISMATCH gap**.
 
@@ -149,8 +151,10 @@ For each Layer 2 module in `extractedFacts.layer2Modules`, apply semantic anomal
 | SEM-3 | Decision=Delete AND testCallerCount > 0 | "Delete but safety net exists (testCallerCount={n})" |
 | SEM-6 | Confidence=HIGH AND Decision=Delete AND zeroCallerCount < 20% of apiCount | "HIGH confidence Delete but significant callers remain" |
 
-> Note: SEM-2, SEM-4, SEM-5 require hubScore and namespace data not yet extracted by the script.
-> Apply them manually by reading the relevant HTML/JSON if the user requests deep semantic audit.
+> Note: SEM-1, SEM-3, SEM-6 can now be evaluated — `apiCount` and `gitStatus` are available in
+> `extractedFacts.layer2Modules.{ModuleName}` (script v1.2+).
+> SEM-2, SEM-4, SEM-5 require hubScore and namespace data not extracted by the script;
+> apply them manually by reading the relevant HTML/JSON if the user requests a deep semantic audit.
 > SEM rules referencing coupling-in.csv are downgraded to WARN due to the known inversion bug.
 
 ### 3. Determine Verdict

@@ -57,6 +57,16 @@ Pre-push hook 涉及 target codebase 的 dotnet 環境設定，
 
 ---
 
+## 先決條件
+
+本 skill 需要 `/csharp-archaeology` Phase 0 Synthesis 已完成並產出：
+- `.analysis/copilot-instructions-draft.md`（含 No-go zones + 模組詞彙表）
+- `.analysis/parallel-tasks.md`（含具體模組與 Form 類別）
+
+若尚未完成 Phase 0，請先執行 `/csharp-archaeology`。
+
+---
+
 ## Step 0 — Preflight
 
 1. 確認 `.analysis/copilot-instructions-draft.md` 是否存在：
@@ -69,7 +79,9 @@ Pre-push hook 涉及 target codebase 的 dotnet 環境設定，
      告知用戶：「找到 Phase 0 草稿（{solution_name}），以它為基礎繼續。」，並摘要顯示以上欄位。
 
      **完整性確認**：若 `## No-go zones` 節或 `## 模組詞彙表` 節內容為空（或仍為範本占位文字），警告用戶：
-     > 「Phase 0 草稿可能尚未完成（Layer 2 未跑完或 Synthesis 未執行）。建議先完成 Phase 0 再繼續。要繼續？（Y / N）」
+     > 「Phase 0 草稿可能尚未完成（Layer 2 未跑完或 Synthesis 未執行）。
+     > 如果已跑過 `/csharp-archaeology`，請執行 `/verify-archaeology` 確認 Phase 0 是否通過驗證。
+     > 要繼續（以現有資料手動補全）？（Y / N）」
 
    - **不存在** → 告知用戶：「找不到 Phase 0 草稿，將逐一詢問必填資訊。」，進入 Step 1 手動模式
 
@@ -202,6 +214,8 @@ Target framework 為 `{framework}`（C# {cs_version}）。
 - 新增 class 時遵循鄰近檔案的命名慣例
 ```
 
+> **條件：** 僅在 Anchor 4（UI 執行緒規則）= Y 時產生此檔案。若 Anchor 4 = N，跳過此檔案，告知用戶：「非 WinForms 專案，略過 winforms-ui.instructions.md。」
+
 ### `winforms-ui.instructions.md`
 
 ```markdown
@@ -224,7 +238,7 @@ applyTo: "**/{Forms,UI,Views,Controls,Panels}/**/*.cs"
 - 複雜業務邏輯從 event handler 中抽取到 backing service 方法，保持 handler 精簡
 ```
 
-確認寫入後告知用戶：「`.github/instructions/` 下兩個範圍指令檔已建立。」
+確認寫入後告知用戶：「`.github/instructions/` 下範圍指令檔已建立（若 Anchor 4 = Y：兩個；若 Anchor 4 = N：一個，winforms-ui.instructions.md 略過）。」
 
 ---
 
@@ -487,6 +501,19 @@ dotnet husky add pre-push -c "dotnet build {your.sln} && dotnet test {test.sln} 
 | Test gate | 每次 push 前 | approval tests 或 unit tests 失敗 |
 | *.received.* | （建議加入 `.gitignore`） | 避免未核准快照進入 commit |
 
+**如需撤銷 Phase 1 寫入的所有設定檔：**
+
+```
+git checkout HEAD -- .github/copilot-instructions.md
+git checkout HEAD -- .github/instructions/
+git checkout HEAD -- .github/prompts/
+```
+若檔案在 Phase 1 之前不存在（新建檔案），改用：
+```
+git rm --cached .github/copilot-instructions.md .github/instructions/ .github/prompts/
+git restore --staged .
+```
+
 ---
 
 ## Step 6 — 完成驗證
@@ -513,6 +540,10 @@ dotnet husky add pre-push -c "dotnet build {your.sln} && dotnet test {test.sln} 
 □ 跑一次完整 build + test 確認全鏈通
   → {build_cmd}
   → dotnet test {test_project_path} --no-build
+
+□ 閱讀 `.analysis/parallel-tasks.md`
+  → 此文件列出 Phase 2+ 需要平行進行的外部驗證任務（外部 dll 引用確認、Runtime Telemetry 佈建），
+    交由人工或其他團隊處理
 ```
 
 ---
@@ -521,7 +552,8 @@ dotnet husky add pre-push -c "dotnet build {your.sln} && dotnet test {test.sln} 
 
 ### Phase 1 完成：
 - [ ] `.github/copilot-instructions.md` 已建立，含 solution_name + 5 個必填錨點（Build / Framework / No-go / UI-thread / 多檔門檻）
-- [ ] `.github/instructions/` 下 2 個範圍指令檔存在且含 `applyTo` front-matter
+- [ ] `.github/instructions/csharp-legacy.instructions.md` 存在且含 `applyTo` front-matter
+- [ ] `.github/instructions/winforms-ui.instructions.md` 存在（Anchor 4 = Y 時）或略過（Anchor 4 = N 時）
 - [ ] `.github/prompts/` 下 4 個 slash command 存在且含 `mode: 'agent'` front-matter
 - [ ] 用戶已收到 Husky.Net 安裝指引
 - [ ] 用戶確認 Copilot Chat 可讀取到新規則

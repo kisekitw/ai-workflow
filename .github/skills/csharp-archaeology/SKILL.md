@@ -485,7 +485,7 @@ parallel-tasks.md updated with specific modules and Form classes.
 evaluator 此時進入 **Mode B**（standalone audit），執行所有 layer 的全面檢查，
 並寫出 `.analysis/verification-report.md`。
 
-- **PASS** → Phase 0 完成
+- **PASS** → Phase 0 完成。▶ **下一步：執行 `/copilot-baseline`，將 `copilot-instructions-draft.md` 精煉為可生效的 Copilot 規則系統。**
 - **GAPS / FAIL** → 修正後再次呼叫 `/verify-archaeology`
 
 > **規則：** Phase 0 完成的唯一標準是 `/verify-archaeology` 回傳 PASS。
