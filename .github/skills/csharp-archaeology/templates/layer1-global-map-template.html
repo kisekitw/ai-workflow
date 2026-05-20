@@ -74,6 +74,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
 .nav-divider{height:1px;background:var(--border);margin:.5rem 1rem}
 .sidebar-footer{padding:.75rem 1rem;border-top:1px solid var(--border);flex-shrink:0}
 .sidebar-footer-txt{font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.6}
+.sidebar-progress{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--border)}
+.sidebar-progress-fill{height:100%;background:var(--orange);width:0%;transition:width .1s ease}
 
 /* ── Mobile tabs ── */
 .mobile-tabs{
@@ -118,6 +120,18 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
 .zoom-pct{font-size:11px;font-family:var(--mono);color:var(--text3);width:36px;text-align:center}
 .zoom-reset{font-size:10px;font-family:var(--mono);color:var(--text3);cursor:pointer;padding:0 4px}
 .zoom-reset:hover{color:var(--orange)}
+.back-top{
+  position:fixed;bottom:1.5rem;left:1.5rem;width:36px;height:36px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border);color:var(--text3);font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);transition:background .15s,color .15s,opacity .25s;
+  opacity:0;pointer-events:none;z-index:110;-webkit-appearance:none;appearance:none;padding:0;
+}
+.back-top:hover{background:var(--bg);color:var(--text)}
+.back-top.visible{opacity:1;pointer-events:auto}
+button.zoom-btn{padding:0}
+button.zoom-reset{border:none;background:none}
+button.sidebar-tab{padding:0}
 
 /* ── Print bar ── */
 .print-bar{display:flex;justify-content:flex-end;margin-bottom:1.5rem}
@@ -231,6 +245,7 @@ h1 em{color:var(--orange);font-style:normal}
 .data-table tbody tr:nth-child(even){background:rgba(0,0,0,.018)}
 .data-table tbody tr:hover{background:var(--bg)}
 .data-table td{padding:.7rem 1.25rem;vertical-align:middle}
+.data-table tbody:empty::after{content:"— 無資料 —";display:block;text-align:center;padding:2rem;font-family:var(--mono);color:var(--text3);font-size:12px}
 .col-name{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── Badges ── */
@@ -242,20 +257,6 @@ h1 em{color:var(--orange);font-style:normal}
 .badge-orange{background:var(--orange-bg);color:var(--orange);border:1px solid rgba(255,107,53,.2)}
 .badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid rgba(124,58,237,.2)}
 .badge-dim   {background:var(--bg);       color:var(--text3); border:1px solid var(--border)}
-
-/* ── Island grid ── */
-.island-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
-.island-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:1.75rem 1.25rem 1.5rem;text-align:center;
-  box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
-  transition:box-shadow .15s,border-color .15s;
-}
-.island-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.06);border-color:rgba(240,56,79,.3)}
-.island-years{font-family:var(--display);font-size:52px;font-weight:800;color:var(--coral);line-height:1;margin-bottom:.25rem}
-.island-years span{font-size:22px;color:var(--text3);font-weight:700}
-.island-name{font-size:13px;font-family:var(--mono);color:var(--text);font-weight:500;margin-bottom:.4rem;word-break:break-word}
-.island-date{font-size:11px;color:var(--text3);font-family:var(--mono)}
 
 /* ── L2 candidates grid ── */
 .l2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem}
@@ -328,7 +329,6 @@ h1 em{color:var(--orange);font-style:normal}
   .kpi-strip .kpi-cell:last-child{grid-column:1/-1}
   .report-header{grid-template-columns:1fr}
   .meta-pills{align-items:flex-start}
-  .island-grid{grid-template-columns:repeat(2,1fr)}
   .l2-grid{grid-template-columns:1fr}
   .chart-row{grid-template-columns:1fr}
   h1{font-size:32px}
@@ -336,13 +336,33 @@ h1 em{color:var(--orange);font-style:normal}
 
 /* ── Print ── */
 @media print{
-  .sidebar,.mobile-tabs,.zoom-bar,.print-bar,canvas{display:none!important}
+  .sidebar,.mobile-tabs,.zoom-bar,.print-bar,.back-top{display:none!important}
   .main-content{margin-left:0!important}
   #zoom-root{transform:none!important;padding:1rem!important;max-width:100%!important}
   .kpi-strip,.priority-item,.report-header{page-break-inside:avoid}
   a{text-decoration:none!important}
   .fade-in{opacity:1!important;transform:none!important}
   .data-table{box-shadow:none!important}
+}
+/* ── Unsorted column indicator ── */
+.data-table th[data-sort]:not(.sort-asc):not(.sort-desc)::after{content:' \21C5';color:var(--text3);font-size:9px}
+/* ── Sticky first column ── */
+.data-table td.col-name:first-child,.data-table th:first-child[data-sort]{position:sticky;left:0;background:inherit;z-index:1}
+.data-table tbody tr:nth-child(even) td.col-name:first-child{background:rgba(0,0,0,.018)}
+.data-table tbody tr:hover td.col-name:first-child{background:var(--bg)}
+/* ── KPI cell clickable ── */
+a.kpi-cell{text-decoration:none;display:block}
+.kpi-cell{cursor:pointer;transition:box-shadow .15s,transform .15s}
+.kpi-cell:hover{box-shadow:0 6px 20px rgba(0,0,0,.12),0 12px 40px rgba(0,0,0,.08);transform:translateY(-2px)}
+/* ── Dark mode ── */
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0F1117;--surface:#1A1C2E;--border:#2A2D45;
+    --text:#E8EAF6;--text2:#9DA3C0;--text3:#5A5F80;
+    --orange-bg:rgba(255,107,53,.12);--coral-bg:rgba(240,56,79,.12);
+    --green-bg:rgba(16,185,129,.12);--sky-bg:rgba(14,165,233,.12);
+    --violet-bg:rgba(124,58,237,.12);--amber-bg:rgba(245,158,11,.12);
+  }
 }
 </style>
 </head>
@@ -377,19 +397,21 @@ h1 em{color:var(--orange);font-style:normal}
   <div class="sidebar-footer">
     <div class="sidebar-footer-txt">Phase 0 &middot; Layer 1<br>Generated {{DATE}}<br>csharp-archaeology skill</div>
   </div>
+  <div class="sidebar-progress"><div class="sidebar-progress-fill" id="sidebar-progress-fill"></div></div>
 </nav>
-<div class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()" title="收合 / 展開側邊欄">&#9664;</div>
+<button class="sidebar-tab" id="sidebar-tab" onclick="toggleSidebar()" title="收合 / 展開側邊欄" aria-label="收合 / 展開側邊欄" aria-expanded="true">&#9664;</button>
 
 <!-- Main content -->
 <main class="main-content">
 <div class="top-bar"></div>
 
 <div class="zoom-bar">
-  <div class="zoom-btn" onclick="zoom(-10)">&minus;</div>
+  <button class="zoom-btn" onclick="zoom(-10)" aria-label="縮小">&minus;</button>
   <span class="zoom-pct" id="pct">100%</span>
-  <div class="zoom-btn" onclick="zoom(+10)">+</div>
-  <span class="zoom-reset" onclick="resetZoom()">reset</span>
+  <button class="zoom-btn" onclick="zoom(+10)" aria-label="放大">+</button>
+  <button class="zoom-reset" onclick="resetZoom()" aria-label="重置縮放">reset</button>
 </div>
+<button class="back-top" id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="回到頂端" title="回到頂端">&#8679;</button>
 
 <div id="zoom-root">
 
@@ -417,35 +439,45 @@ h1 em{color:var(--orange);font-style:normal}
 
   <!-- KPI Strip (5 cells) -->
   <div class="kpi-strip fade-in" id="l1-kpi" data-nav-id="l1-kpi">
-    <div class="kpi-cell orange">
+    <a class="kpi-cell orange" href="#l1-kpi">
       <span class="kpi-icon">&#9830;</span>
       <div class="kpi-label">已分析的專案數</div>
       <div class="kpi-num">{{PROJECT_COUNT}}</div>
       <div class="kpi-note">排除 Ex 結尾與 C++ 專案</div>
-    </div>
-    <div class="kpi-cell coral">
+    </a>
+    <a class="kpi-cell coral" href="#l1-islands">
       <span class="kpi-icon">&#9711;</span>
       <div class="kpi-label">沒有人依賴的模組</div>
       <div class="kpi-num">{{ISLAND_COUNT}}</div>
       <div class="kpi-note">刪除優先候選，需平行任務確認</div>
-    </div>
-    <div class="kpi-cell sky">
+    </a>
+    <a class="kpi-cell sky" href="#l1-stability">
       <span class="kpi-icon">&#9646;</span>
       <div class="kpi-label">兩年沒人動過</div>
       <div class="kpi-num">{{STALE_COUNT}}</div>
       <div class="kpi-note">穩定訊號，不代表是死碼</div>
-    </div>
-    <div class="kpi-cell green">
+    </a>
+    <a class="kpi-cell green" href="#l1-dead">
       <span class="kpi-icon">&#8856;</span>
       <div class="kpi-label">可能沒在用的程式碼</div>
       <div class="kpi-num">{{DEAD_COUNT}}</div>
       <div class="kpi-note">private/internal，需人工確認</div>
-    </div>
-    <div class="kpi-cell amber">
+    </a>
+    <a class="kpi-cell amber" href="#l1-hubs">
       <span class="kpi-icon">&#9733;</span>
       <div class="kpi-label">最高 Hub 分數</div>
       <div class="kpi-num">{{TOP_HUB_SCORE}}</div>
       <div class="kpi-note">{{TOP_HUB_NAME}} 被依賴次數</div>
+    </a>
+  </div>
+
+  <!-- Safety caveat — shown prominently above sections -->
+  <div class="warn-box fade-in">
+    <span class="warn-icon">&#9888;&#65039;</span>
+    <div class="warn-text">
+      可能沒在用的程式碼均為 private/internal 層級，可信度僅代表 grep 掃描結果的可信程度。<br>
+      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（外部 repo 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
+      在此之前，請勿刪除任何 public 成員。
     </div>
   </div>
 
@@ -460,7 +492,7 @@ h1 em{color:var(--orange);font-style:normal}
     </div>
     <div class="chart-wrap fade-in">
       <div class="chart-title">被依賴次數（Top 15 模組）</div>
-      <div style="height:320px"><canvas id="chart-hubs"></canvas></div>
+      <div style="height:320px"><canvas id="chart-hubs" role="img" aria-label="Top 15 模組被依賴次數長條圖"></canvas></div>
     </div>
     <div class="fade-in">
       <div class="table-toolbar">
@@ -485,7 +517,7 @@ h1 em{color:var(--orange);font-style:normal}
               <td class="col-name">{Name}</td>
               <td>{DependentCount}</td>
               <td>{OwnDeps}</td>
-              <td><span class="badge badge-{coral|amber|green}">{高風險|中風險|低風險}</span></td>
+              <td><span class="badge badge-{coral|amber|green}">{▲ 高風險|● 中風險|▽ 低風險}</span></td>
             </tr>
           -->
           <!-- ##HUB_ROWS## -->
@@ -548,12 +580,12 @@ h1 em{color:var(--orange);font-style:normal}
       <div class="chart-wrap">
         <div class="chart-title">狀態分佈（全部 {{PROJECT_COUNT}} 個專案）</div>
         <div style="height:240px;display:flex;align-items:center;justify-content:center">
-          <canvas id="chart-git-status"></canvas>
+          <canvas id="chart-git-status" role="img" aria-label="Git 穩定性狀態分佈圓餅圖"></canvas>
         </div>
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Commit 數（活躍度前 10 模組）</div>
-        <div style="height:240px"><canvas id="chart-git-commits"></canvas></div>
+        <div style="height:240px"><canvas id="chart-git-commits" role="img" aria-label="活躍度前 10 模組 Commit 數長條圖"></canvas></div>
       </div>
     </div>
     <div class="fade-in">
@@ -625,7 +657,7 @@ h1 em{color:var(--orange);font-style:normal}
               <td>{DependentCount}</td>
               <td><span class="badge badge-{green|amber|sky}">{ACTIVE|STALE|FROZEN}</span></td>
               <td>{DeadCount}</td>
-              <td><span class="badge badge-{coral|amber|green}">TIER-{1|2|3}</span></td>
+              <td><span class="badge badge-{coral|amber|green}">{▲ TIER-1|● TIER-2|▽ TIER-3}</span></td>
             </tr>
           -->
           <!-- ##TIER_TABLE## -->
@@ -645,7 +677,7 @@ h1 em{color:var(--orange);font-style:normal}
     </div>
     <div class="chart-wrap fade-in">
       <div class="chart-title">死碼候選數量（依模組分組）</div>
-      <div style="height:220px"><canvas id="chart-dead"></canvas></div>
+      <div style="height:220px"><canvas id="chart-dead" role="img" aria-label="死碼候選數量依模組分組長條圖"></canvas></div>
     </div>
     <div class="fade-in">
       <div class="table-toolbar">
@@ -670,7 +702,7 @@ h1 em{color:var(--orange);font-style:normal}
               <td class="col-name">{Method}</td>
               <td class="col-name" style="color:var(--text3)">{RelativePath}:{Line}</td>
               <td><span class="badge badge-dim">{private|internal}</span></td>
-              <td><span class="badge badge-{coral|amber|sky}">{高可信|中可信|低可信}</span></td>
+              <td><span class="badge badge-{coral|amber|sky}">{▲ 高可信|● 中可信|▽ 低可信}</span></td>
             </tr>
           -->
           <!-- ##DEAD_ROWS## -->
@@ -791,15 +823,6 @@ h1 em{color:var(--orange);font-style:normal}
     </div>
   </div>
 
-  <div class="warn-box fade-in">
-    <span class="warn-icon">&#9888;&#65039;</span>
-    <div class="warn-text">
-      可能沒在用的程式碼均為 private/internal 層級，可信度僅代表 grep 掃描結果的可信程度。<br>
-      <strong>Public API 是否為死碼</strong>必須等 <strong>Task A（外部 repo 掃描）</strong> 與 <strong>Task B（Telemetry）</strong> 完成後才能判斷。<br>
-      在此之前，請勿刪除任何 public 成員。
-    </div>
-  </div>
-
   <div class="report-footer fade-in">
     <span class="footer-left">Phase 0 &middot; Layer 1 &middot; 00-global-map</span>
     <span class="footer-right">Generated by csharp-archaeology skill &middot; VS Code Copilot Enterprise</span>
@@ -819,6 +842,7 @@ function toggleSidebar(){
   const collapsed = sidebar.classList.toggle('collapsed');
   tab.classList.toggle('collapsed', collapsed);
   tab.innerHTML = collapsed ? '&#9654;' : '&#9664;';
+  tab.setAttribute('aria-expanded', (!collapsed).toString());
   main.classList.toggle('sidebar-collapsed', collapsed);
 }
 
@@ -833,8 +857,9 @@ function zoom(delta){
   root.style.transform = `scale(${scale})`;
   pct.textContent = Math.round(scale*100)+'%';
   document.body.style.minHeight = (root.offsetHeight * scale + 80) + 'px';
+  localStorage.setItem('zoom-l1', scale);
 }
-function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent='100%'; document.body.style.minHeight=''; }
+function resetZoom(){ scale=1; root.style.transform='scale(1)'; pct.textContent='100%'; document.body.style.minHeight=''; localStorage.removeItem('zoom-l1'); }
 document.addEventListener('wheel', e=>{
   if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoom(e.deltaY < 0 ? 10 : -10); }
 },{passive:false});
@@ -850,6 +875,35 @@ window.addEventListener('DOMContentLoaded', ()=>{
   });
   initScrollSpy();
   initFadeIn();
+  // Tooltips for truncated cells
+  document.querySelectorAll('.col-name').forEach(el=>{ el.title = el.textContent.trim(); });
+  // Back-to-top visibility
+  const backTop = document.getElementById('back-top');
+  window.addEventListener('scroll',()=>{ backTop?.classList.toggle('visible', window.scrollY>300); },{passive:true});
+  // Restore zoom from localStorage
+  const _sz = parseFloat(localStorage.getItem('zoom-l1'));
+  if(_sz>=0.4 && _sz<=1.5){ scale=_sz; root.style.transform=`scale(${scale})`; pct.textContent=Math.round(scale*100)+'%'; }
+  // Section auto-numbering
+  const secNums = document.querySelectorAll('.sec-num');
+  const total = secNums.length;
+  secNums.forEach((el,i)=>{ el.textContent = `${String(i+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`; });
+  // Initial row count for table hints
+  document.querySelectorAll('.data-table').forEach(tbl=>{
+    const hint = document.querySelector(`.table-search[data-table="${tbl.id}"]`)
+      ?.closest('.table-toolbar')?.querySelector('.table-hint');
+    if(hint){
+      const n = tbl.querySelectorAll('tbody tr:not(.detail-row)').length;
+      if(n>0) hint.textContent = `${n} 筆 · 點擊欄位標題可排序`;
+    }
+  });
+  // Sidebar scroll progress
+  const progressFill = document.getElementById('sidebar-progress-fill');
+  if(progressFill){
+    window.addEventListener('scroll',()=>{
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      progressFill.style.width = (h>0 ? Math.round(window.scrollY/h*100) : 0)+'%';
+    },{passive:true});
+  }
 });
 
 function makeSortable(table){
@@ -879,16 +933,30 @@ function makeSortable(table){
         });
       }
       rows.forEach(r=>tbody.appendChild(r));
+      // Re-apply active search filter after sort
+      const srch = document.querySelector(`.table-search[data-table="${table.id}"]`);
+      if(srch && srch.value){
+        const q = srch.value.toLowerCase().trim();
+        Array.from(tbody.querySelectorAll('tr')).forEach(r=>{
+          r.style.display = !q||r.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      }
     });
   });
 }
 
 function makeSearchable(input, table){
+  const hint = input.closest('.table-toolbar')?.querySelector('.table-hint');
   input.addEventListener('input',()=>{
     const q = input.value.toLowerCase().trim();
+    let visible = 0, total = 0;
     table.querySelectorAll('tbody tr').forEach(row=>{
-      row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+      total++;
+      const show = !q || row.textContent.toLowerCase().includes(q);
+      row.style.display = show ? '' : 'none';
+      if(show) visible++;
     });
+    if(hint) hint.textContent = q ? `${visible} / ${total} 筆` : '點擊欄位標題可排序';
   });
 }
 
@@ -911,11 +979,32 @@ function initScrollSpy(){
 }
 
 // ══════════════════════════════════════════════════════════
-//  FADE-IN
+//  FADE-IN + KPI COUNTER
 // ══════════════════════════════════════════════════════════
+function animateCount(el, target, duration=600){
+  const orig = el.textContent;
+  const start = performance.now();
+  const step = ts=>{
+    const p = Math.min((ts-start)/duration, 1);
+    el.textContent = Math.round(p * target);
+    if(p<1) requestAnimationFrame(step);
+    else el.textContent = orig;
+  };
+  requestAnimationFrame(step);
+}
+
 function initFadeIn(){
   const obs = new IntersectionObserver(entries=>{
-    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); obs.unobserve(e.target); } });
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+        e.target.querySelectorAll('.kpi-num').forEach(el=>{
+          const n = parseInt(el.textContent.replace(/[^\d]/g,''));
+          if(!isNaN(n) && n > 0) animateCount(el, n);
+        });
+      }
+    });
   },{threshold:0.08});
   document.querySelectorAll('.fade-in').forEach(el=>obs.observe(el));
 }
@@ -982,7 +1071,23 @@ function initCharts(data){
           legend:{display:true,position:'bottom',labels:{color:'#9DA3C0',font:{family:'DM Mono, monospace',size:11},padding:14,boxWidth:12,boxHeight:12}},
           tooltip:{...TT,callbacks:{label:c=>' '+c.label+': '+c.parsed+' 個'}}
         }
-      }
+      },
+      plugins:[{
+        id:'centerText',
+        afterDraw(chart){
+          const {ctx,chartArea:{width,height,left,top}}=chart;
+          ctx.save();
+          ctx.font="800 22px 'Syne',sans-serif";
+          ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text').trim()||'#1A1C2E';
+          ctx.textAlign='center';ctx.textBaseline='middle';
+          const total=data.gitStatus.active+data.gitStatus.stale+data.gitStatus.frozen;
+          ctx.fillText(total,left+width/2,top+height/2-8);
+          ctx.font="400 11px 'DM Mono',monospace";
+          ctx.fillStyle='#9DA3C0';
+          ctx.fillText('個專案',left+width/2,top+height/2+14);
+          ctx.restore();
+        }
+      }]
     });
   }
 
@@ -1043,6 +1148,28 @@ function initCharts(data){
 // });
 // ══════════════════════════════════════════════════════════
 // ##CHART_INIT##
+
+// ══════════════════════════════════════════════════════════
+//  PRINT — canvas → img snapshot
+// ══════════════════════════════════════════════════════════
+window.addEventListener('beforeprint',()=>{
+  document.querySelectorAll('canvas').forEach(c=>{
+    const img=document.createElement('img');
+    img.src=c.toDataURL('image/png');
+    img.style.maxWidth='100%';
+    img.dataset.printProxy='1';
+    c.parentNode.insertBefore(img,c.nextSibling);
+    c.dataset.hiddenForPrint='1';
+    c.style.display='none';
+  });
+});
+window.addEventListener('afterprint',()=>{
+  document.querySelectorAll('[data-print-proxy]').forEach(el=>el.remove());
+  document.querySelectorAll('canvas[data-hidden-for-print]').forEach(c=>{
+    c.style.display='';
+    delete c.dataset.hiddenForPrint;
+  });
+});
 </script>
 </body>
 </html>
