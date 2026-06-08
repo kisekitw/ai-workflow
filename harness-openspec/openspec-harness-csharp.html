@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<title>spec.md 怎麼被「確保符合」？C# WinForms + OpenSpec 實例</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1b1510; --surface:#27201a; --surface2:#322820;
+    --text:#f4ead7; --text-soft:#cdbda0;
+    --rust:#ee7d4d; --rust-soft:#f4a07a; --gold:#f3bb60;
+    --green:#9ccb6f; --green-deep:#7fae53; --red:#f28a78; --blue:#7fb4e0;
+    --line:#473a2c; --code:#d7e8b8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;background:#1b1510;}
+  body{
+    background-color:var(--bg);
+    background-image:radial-gradient(circle at 12% 5%,rgba(238,125,77,.10),transparent 42%),radial-gradient(circle at 88% 95%,rgba(156,203,111,.08),transparent 42%);
+    color:var(--text);font-family:'Noto Sans TC',sans-serif;line-height:1.75;overflow-x:hidden;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px;position:relative;}
+
+  header{padding:70px 0 40px;text-align:center;}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:22px;}
+  h1{font-family:'Noto Serif TC',serif;font-weight:900;line-height:1.2;font-size:clamp(1.9rem,5.4vw,3.2rem);letter-spacing:-.01em;}
+  h1 .em{color:var(--rust);position:relative;white-space:nowrap;}
+  h1 .em::after{content:"";position:absolute;left:-1%;right:-1%;bottom:.02em;height:3px;background:var(--gold);border-radius:2px;}
+  .sub{margin:26px auto 0;max-width:660px;font-size:clamp(.98rem,2.3vw,1.15rem);color:var(--text-soft);}
+  .pill{display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:26px;}
+  .pill span{font-family:'JetBrains Mono',monospace;font-size:.74rem;background:var(--surface2);border:1px solid var(--line);color:var(--text);padding:6px 13px;border-radius:99px;}
+
+  /* the "claim" framing */
+  .framing{margin:22px 0 56px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:34px 32px;}
+  .framing .lab{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.28em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;}
+  .framing p{font-family:'Noto Serif TC',serif;font-size:clamp(1.1rem,2.9vw,1.4rem);line-height:1.6;}
+  .framing .hl{color:var(--gold);font-weight:700;}
+
+  .sec-head{display:flex;align-items:center;gap:15px;margin:64px 0 24px;}
+  .sec-no{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.05rem;color:#1b1510;background:var(--rust);width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;border-radius:11px;}
+  .sec-head h2{font-family:'Noto Serif TC',serif;font-size:clamp(1.3rem,3.4vw,1.85rem);font-weight:700;line-height:1.25;}
+  .lead{color:var(--text-soft);margin-bottom:6px;}
+  .lead b{color:var(--text);}
+
+  /* code block */
+  .code{background:#15110c;border:1px solid var(--line);border-radius:12px;margin:16px 0;overflow:hidden;}
+  .code .bar{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);border-bottom:1px solid var(--line);}
+  .code .bar .fn{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--text-soft);}
+  .code .bar .dot{width:9px;height:9px;border-radius:50%;}
+  .code pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.65;color:var(--code);white-space:pre;}
+  .code .cm{color:#8a9a6a;}
+  .code .kw{color:var(--rust-soft);}
+  .code .st{color:var(--gold);}
+  .code .hi{color:var(--text);background:rgba(243,187,96,.12);}
+
+  /* flow / pipeline */
+  .pipe{background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:28px 24px;margin-top:18px;}
+  .flowstep{display:flex;gap:16px;align-items:flex-start;position:relative;padding-bottom:24px;}
+  .flowstep:last-child{padding-bottom:0;}
+  .flowstep:not(:last-child)::before{content:"";position:absolute;left:20px;top:44px;bottom:-4px;width:2px;background:repeating-linear-gradient(var(--line) 0 6px,transparent 6px 12px);}
+  .flowstep .num{flex:0 0 42px;width:42px;height:42px;border-radius:50%;background:var(--surface2);border:2px solid var(--text-soft);color:var(--text);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace;z-index:1;font-size:.95rem;}
+  .flowstep.r .num{background:var(--rust);border-color:var(--rust);color:#1b1510;}
+  .flowstep.g .num{background:var(--green);border-color:var(--green);color:#1b1510;}
+  .flowstep .body h4{font-size:1.08rem;margin-bottom:4px;}
+  .flowstep .body p{font-size:.92rem;color:var(--text-soft);}
+  .flowstep .body b{color:var(--text);}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:.64rem;letter-spacing:.06em;padding:3px 8px;border-radius:6px;margin-left:8px;vertical-align:middle;font-weight:700;}
+  .tag.cmd{background:rgba(127,180,224,.18);color:var(--blue);}
+  .tag.gate{background:rgba(156,203,111,.2);color:var(--green);}
+
+  /* 4-layer table */
+  .layers{display:grid;gap:14px;margin-top:18px;}
+  .layer{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:20px 22px;border-left-width:5px;}
+  .layer.l1{border-left-color:var(--red);}
+  .layer.l2{border-left-color:var(--gold);}
+  .layer.l3{border-left-color:var(--green);}
+  .layer.l4{border-left-color:var(--blue);}
+  .layer .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .layer h4{font-size:1.08rem;}
+  .layer .det{font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:700;padding:3px 9px;border-radius:99px;}
+  .det.soft{background:rgba(242,138,120,.18);color:var(--red);}
+  .det.hard{background:rgba(156,203,111,.2);color:var(--green);}
+  .layer p{font-size:.9rem;color:var(--text-soft);}
+  .layer code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface2);padding:1px 6px;border-radius:5px;color:var(--code);}
+
+  /* traceability chain */
+  .chain{background:var(--surface);border:1.5px dashed var(--gold);border-radius:14px;padding:22px;margin-top:18px;}
+  .chain .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:.78rem;}
+  .chain .node{background:var(--surface2);border:1px solid var(--line);padding:7px 11px;border-radius:8px;color:var(--text);}
+  .chain .node.spec{border-color:var(--gold);color:var(--gold);}
+  .chain .node.green{border-color:var(--green);color:var(--green);}
+  .chain .ar{color:var(--rust);font-weight:700;}
+
+  /* insight callouts */
+  .insight{background:var(--surface);border:1.5px dashed var(--gold);border-radius:12px;padding:16px 20px;margin-top:16px;font-size:.95rem;}
+  .insight.g{border-color:var(--green);}
+  .insight.r{border-color:var(--red);}
+  .insight b{color:var(--gold);}
+  .insight.g b{color:var(--green);}
+  .insight.r b{color:var(--red);}
+
+  /* mock vs real / stryker */
+  .stryker{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;}
+  .stryker .card{flex:1;min-width:250px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:20px;}
+  .stryker .card.killed{border-color:var(--green-deep);}
+  .stryker .card.survived{border-color:#7a4234;}
+  .stryker .t{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.08em;margin-bottom:8px;}
+  .stryker .killed .t{color:var(--green);}
+  .stryker .survived .t{color:var(--red);}
+  .stryker .card p{font-size:.9rem;color:var(--text-soft);}
+  .stryker .card b{color:var(--text);}
+  .stryker .mut{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:#15110c;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin:10px 0;color:var(--code);}
+
+  .scbar{display:flex;border-radius:14px;overflow:hidden;margin-top:16px;border:1.5px solid var(--line);}
+  .scbar .half{flex:1;padding:22px 22px;background:var(--surface);}
+  .scbar .con{background:var(--surface2);}
+  .scbar .lab{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.14em;font-weight:700;text-transform:uppercase;margin-bottom:10px;}
+  .scbar .sug .lab{color:var(--red);}
+  .scbar .con .lab{color:var(--green);}
+  .scbar h4{font-size:1.08rem;margin-bottom:8px;color:var(--text);}
+  .scbar ul{list-style:none;font-size:.88rem;color:var(--text-soft);}
+  .scbar li{padding:4px 0 4px 18px;position:relative;}
+  .scbar li b{color:var(--text);}
+  .scbar .sug li::before{content:"~";position:absolute;left:0;color:var(--red);font-weight:700;}
+  .scbar .con li::before{content:"\25aa";position:absolute;left:0;color:var(--green);}
+  @media(max-width:560px){.scbar{flex-direction:column;}}
+  .takeaway{margin:66px 0 26px;background:linear-gradient(135deg,#c2502a,#9c3c1d);border-radius:18px;padding:42px 36px;color:#fdf3e6;text-align:center;position:relative;overflow:hidden;}
+  .takeaway::after{content:"🐎";position:absolute;bottom:-12px;right:16px;font-size:5rem;opacity:.15;}
+  .takeaway .lab{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-bottom:16px;}
+  .takeaway p{font-family:'Noto Serif TC',serif;font-size:clamp(1.15rem,3vw,1.5rem);line-height:1.55;font-weight:600;}
+  .takeaway u{text-decoration-color:#f3bb60;text-underline-offset:4px;}
+  .takeaway .small{font-family:'Noto Sans TC';font-size:.94rem;font-weight:400;margin-top:18px;opacity:.92;line-height:1.7;}
+
+  .sources{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-top:30px;}
+  .sources h4{font-size:.95rem;color:var(--gold);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em;}
+  .sources ul{list-style:none;font-size:.82rem;color:var(--text-soft);}
+  .sources li{padding:3px 0 3px 16px;position:relative;}
+  .sources li::before{content:"▪";position:absolute;left:0;color:var(--rust);}
+  .sources code{font-family:'JetBrains Mono',monospace;font-size:.85em;color:var(--code);}
+
+  footer{text-align:center;padding:26px 0 60px;color:var(--text-soft);font-size:.8rem;font-family:'JetBrains Mono',monospace;}
+  footer .line{width:48px;height:2px;background:var(--line);margin:0 auto 16px;}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .65s,transform .65s;}
+  .reveal.show{opacity:1;transform:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Harness Engineering · 實戰範例</div>
+    <h1>spec.md 怎麼<span class="em">確保被符合</span>？<br>一個 C# WinForms 小範例</h1>
+    <p class="sub">折扣計算機 · OpenSpec 寫規格 · GitHub Copilot 寫程式 · Reqnroll 把 GWT 變成會跑的測試。重點：怎麼讓「AI 說做完了」變成「機器擋得住的證據」。</p>
+    <div class="pill"><span>OpenSpec</span><span>GitHub Copilot</span><span>C# / WinForms</span><span>Reqnroll</span><span>Stryker.NET</span></div>
+  </header>
+
+  <section class="framing reveal">
+    <div class="lab">這份範例要回答的一句話</div>
+    <p>spec.md 只是一份<span class="hl">「使用者要什麼」的文件</span>。它本身擋不住任何東西。<br>Harness 的工作，是在它周圍<span class="hl">疊四道關卡</span>，讓「不符合規格的程式」<span class="hl">根本進不了 main 分支</span>。</p>
+  </section>
+
+  <!-- STEP 0: the feature -->
+  <div class="sec-head reveal"><div class="sec-no">00</div><h2>範例功能：折扣計算機</h2></div>
+  <p class="lead reveal">輸入原價與折扣百分比，算出最終價格；不合理的輸入要被拒絕。小，但五臟俱全——足以走完整條 spec → 測試 → 實作 → 驗收。</p>
+  <div class="insight g reveal">💡 <b>WinForms 的關鍵設計</b>：把所有邏輯放進一個<b style="color:var(--text)">純 C# 的 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">PricingService</code> 類別</b>，Form 只負責顯示（Passive View / MVP）。因為 WinForms 的視窗很難直接做單元測試，把邏輯抽出來，整條規格就能在「不開視窗」的情況下被測。這是有所本的標準做法（MSDN「Model-View-Presenter」）。</div>
+
+  <!-- STEP 1: spec.md -->
+  <div class="sec-head reveal"><div class="sec-no">01</div><h2>用 OpenSpec 寫 spec.md（GWT 的真實格式）</h2></div>
+  <p class="lead reveal">在 Copilot Chat 跑 <span style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 6px;border-radius:5px">/opsx:propose</span>，OpenSpec 幫你建資料夾，你填寫規格。<b>注意真實語法</b>：SHALL/MUST 要放在需求<b>內文</b>、每個需求至少要有一個 <code style="font-family:'JetBrains Mono'">#### Scenario:</code>。</p>
+  <div class="code reveal">
+    <div class="bar"><span class="dot" style="background:#e0625a"></span><span class="dot" style="background:#e8b24a"></span><span class="dot" style="background:#7fae53"></span><span class="fn">openspec/changes/add-price-calculator/specs/pricing/spec.md</span></div>
+<pre><span class="cm">## ADDED Requirements</span>
+
+<span class="kw">### Requirement: Discount calculation</span>
+The system <span class="hi">MUST</span> compute a non-negative final price given a
+positive base price and a discount percentage between 0 and 100.
+
+<span class="kw">#### Scenario: Standard discount</span>
+- GIVEN a base price of 100.00
+- WHEN a discount of 20 percent is applied
+- THEN the final price is 80.00
+
+<span class="kw">#### Scenario: Reject negative price</span>
+- GIVEN a base price of -5.00
+- WHEN a discount of 10 percent is applied
+- THEN the calculation is rejected with an error</pre>
+  </div>
+
+  <!-- STEP 2: validate gate -->
+  <div class="sec-head reveal"><div class="sec-no">02</div><h2>第一道硬關卡：規格結構驗證</h2></div>
+  <p class="lead reveal">跑 <span style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 6px;border-radius:5px">openspec validate add-price-calculator --strict</span>。如果你漏了 scenario、或忘了 MUST，它直接報錯、回傳非零、<b>擋住 archive</b>。這不是建議，是機器判定。</p>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">$ openspec validate add-price-calculator --strict</span></div>
+<pre><span class="st">✗ [ERROR]</span> requirements[0].scenarios:
+          Requirement must have at least one scenario
+<span class="cm"># 退出碼非 0 → 這個 change 無法被 archive 進 specs/</span></pre>
+  </div>
+  <div class="insight reveal">💡 這道關卡守的是「<b>規格本身寫得對不對</b>」——還沒碰到程式。連需求都長歪了，後面全是白工。</div>
+
+  <!-- STEP 3: feature + red first -->
+  <div class="sec-head reveal"><div class="sec-no">03</div><h2>把每條 Scenario 變成會跑的測試（紅燈先行）</h2></div>
+  <p class="lead reveal">spec.md 的每個 <code style="font-family:'JetBrains Mono'">Scenario</code>，鏡射成 Reqnroll 的 <code style="font-family:'JetBrains Mono'">.feature</code> 檔；GWT 綁定到 C# 步驟方法（對應 Arrange-Act-Assert）。<b>關鍵紀律</b>：在實作之前就寫測試，先看它<b style="color:var(--red)">紅燈</b>——這是 Kent Beck 的 Red→Green→Refactor。</p>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">Pricing.feature  &nbsp;(Gherkin，鏡射 spec.md)</span></div>
+<pre><span class="kw">Feature:</span> Discount calculation
+
+<span class="kw">Scenario:</span> Standard discount
+    <span class="st">Given</span> a base price of 100.00
+    <span class="st">When</span> a discount of 20 percent is applied
+    <span class="st">Then</span> the final price is 80.00</pre>
+  </div>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">PricingSteps.cs  &nbsp;(GWT → Arrange / Act / Assert)</span></div>
+<pre><span class="kw">[Binding]</span>
+<span class="kw">public class</span> PricingSteps
+{
+    <span class="kw">private decimal</span> _basePrice;
+    <span class="kw">private decimal?</span> _result;
+    <span class="kw">private readonly</span> PricingService _svc = <span class="kw">new</span>();
+
+    <span class="kw">[Given(</span><span class="st">"a base price of (.*)"</span><span class="kw">)]</span>
+    <span class="kw">public void</span> GivenPrice(<span class="kw">decimal</span> p) => _basePrice = p;   <span class="cm">// Arrange</span>
+
+    <span class="kw">[When(</span><span class="st">"a discount of (.*) percent is applied"</span><span class="kw">)]</span>
+    <span class="kw">public void</span> WhenApplied(<span class="kw">decimal</span> pct)                  <span class="cm">// Act</span>
+        => _result = _svc.ApplyDiscount(_basePrice, pct);
+
+    <span class="kw">[Then(</span><span class="st">"the final price is (.*)"</span><span class="kw">)]</span>
+    <span class="kw">public void</span> ThenPrice(<span class="kw">decimal</span> expected)               <span class="cm">// Assert</span>
+        => Assert.Equal(expected, _result);
+}</pre>
+  </div>
+  <div class="insight g reveal">💡 跑 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">dotnet test</code> → 編譯失敗，因為 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">PricingService</code> 還不存在。<b>這個失敗是好事</b>——它證明了「這個測試真的會抓錯」。接著才讓 Copilot 寫實作，把燈轉綠。</div>
+  <div class="insight reveal">📌 <b>為了精簡，上面只展示了第一個 scenario。</b> 真正照規矩做時，spec.md 裡的<b style="color:var(--text)">兩個 scenario 都必須各有對應測試</b>（包含「拒絕負數價格」那條）——「每個 Scenario 都要有測試」正是第 4 層關卡會檢查的鐵律。</div>
+
+  <!-- STEP 4: the four layers -->
+  <div class="sec-head reveal"><div class="sec-no">04</div><h2>四道關卡：哪些是「建議」，哪些是「約束」</h2></div>
+  <p class="lead reveal">這是整份範例的核心。<b>只有第 1 層是 AI 自由心證（建議），第 2~4 層都是機器擋得住（約束）。</b></p>
+  <div class="layers">
+    <div class="layer l1 reveal">
+      <div class="top"><h4>① 指令層</h4><span class="det soft">建議 · 非確定性</span></div>
+      <p>三種來源的指令疊在這一層：<code>copilot-instructions.md</code>（你手寫的規矩）、<code>AGENTS.md</code>（通用 agent 指令），以及 <code>.github/prompts/</code>——這是 <b style="color:var(--text)">OpenSpec 在 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">openspec init --tools github-copilot</code> 時自動寫進去的</b>，把 <code>/opsx:propose</code> 等指令變成 Copilot Chat 看得到的 slash command。這層告訴 Copilot 規矩——但 GitHub 官方明說「AI 不保證每次都照做」，所以<b style="color:var(--text)">不能只靠它</b>。</p>
+    </div>
+    <div class="layer l2 reveal">
+      <div class="top"><h4>② 規格結構關卡</h4><span class="det hard">約束 · 確定性</span></div>
+      <p><code>openspec validate --strict</code>。規格寫歪就回傳非零、擋住 archive。機器判定，不看臉色。</p>
+    </div>
+    <div class="layer l3 reveal">
+      <div class="top"><h4>③ 可執行規格關卡</h4><span class="det hard">約束 · 確定性</span></div>
+      <p>Reqnroll 把每個 Scenario 變成測試，<code>dotnet test</code> 紅燈就是紅燈。AI 沒辦法用嘴把紅燈說成綠的。</p>
+    </div>
+    <div class="layer l4 reveal">
+      <div class="top"><h4>④ 程式約束關卡</h4><span class="det hard">約束 · 確定性</span></div>
+      <p><code>TreatWarningsAsErrors</code>（警告當錯誤、編譯失敗）、<b style="color:var(--text)">Husky.NET</b>、GitHub Actions CI。<b>Husky.NET 是什麼？</b>它是 Git pre-commit 鉤子的安裝器——讓你在 <code>git commit</code> 真正發生<b style="color:var(--text)">之前</b>自動跑一串檢查（<code>dotnet test</code>、<code>dotnet format</code>、<code>openspec validate</code>），任一個失敗就<b style="color:var(--text)">擋下這次 commit，程式碼進不了版控</b>。任一關卡紅燈 → PR 合不進去。</p>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">同樣的檢查，差別在「靠 AI 自律 vs 靠事件強制」</h3>
+  <p class="lead reveal">有人問：那 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">init.sh</code> + <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">AGENTS.md</code>（把 compile/clean/test 裝進腳本、用 AGENTS.md 當 router 每次提醒 agent 去跑）跟 Husky.NET 是同一回事嗎？<b>封裝的意圖相同，但硬度差一級</b>——這就是「建議 vs 約束」。</p>
+  <div class="scbar reveal">
+    <div class="half sug"><div class="lab">建議 · 可繞過</div><h4>AGENTS.md → init.sh</h4><ul>
+      <li>靠 agent <b>自己「願意」</b>讀 AGENTS.md、自己決定去跑腳本</li><li>context 滿了、或它覺得「應該沒問題」就可能<b>跳過</b></li><li>觸發權在 <b>AI 的判斷</b></li><li>譜系位置：規則文件那一格（持久、但建議性）</li></ul></div>
+    <div class="half con"><div class="lab">約束 · 不可繞過</div><h4>Husky.NET（git hook）</h4><ul>
+      <li>綁在 <b>git commit 事件</b>上，不問 agent 願不願意</li><li>一下 commit 就<b>強制</b>執行，沒過就擋，跳不掉</li><li>觸發權在 <b>Git，不在 agent</b></li><li>譜系位置：Hooks 那一格（持久、強制性）</li></ul></div>
+  </div>
+  <div class="insight g reveal">💡 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">init.sh</code> 是最入門、跨語言通用的做法（教學常用）；Husky.NET 是把<b style="color:var(--text)">同樣的意圖升級成 git 層級的硬約束</b>。能看出這兩個是「同一意圖、不同硬度」，就抓到約束層的精髓了。</div>
+
+  <!-- STEP 5: the frozen contract -->
+  <div class="sec-head reveal"><div class="sec-no">05</div><h2>「事先凍結、可驗證的合約」具體長怎樣？</h2></div>
+  <p class="lead reveal">前面說「過關標準要事先凍結、可驗證，否則 AI 會無限互吵」。在 OpenSpec 裡，這份合約有個真實的落腳處：<code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">tasks.md</code>——一份<b>打勾清單</b>，AI 邊做邊勾。好的寫法是每個任務都附上 <b style="color:var(--text)">Acceptance（過關條件）</b> 和 <b style="color:var(--text)">Evidence（證據）</b>，把「夠好」釘成機器能查的東西。</p>
+  <div class="code reveal">
+    <div class="bar"><span class="dot" style="background:#e0625a"></span><span class="dot" style="background:#e8b24a"></span><span class="dot" style="background:#7fae53"></span><span class="fn">openspec/changes/add-price-calculator/tasks.md</span></div>
+<pre><span class="cm">## 1. 折扣計算邏輯</span>
+- [ ] 1.1 實作 PricingService.ApplyDiscount
+      <span class="st">Acceptance:</span> Pricing.feature 兩個 scenario 全綠
+      <span class="st">Evidence:</span>   dotnet test 全過 + Stryker 突變分數 ≥ 80%
+- [ ] 1.2 拒絕負數價格 / 百分比超出 0~100
+      <span class="st">Acceptance:</span> 非法輸入時擲出例外，且有對應測試
+      <span class="st">Evidence:</span>   測試 ThenRejected 綠燈</pre>
+  </div>
+  <div class="insight reveal">💡 重點不在格式，在「<b>Acceptance 與 Evidence 必須是可驗證的</b>」。寫「程式碼要優雅」→ 無限互吵；寫「兩個 scenario 全綠 + 突變分數 ≥ 80%」→ 達標就是達標，<b style="color:var(--text)">合約說了算，不是「最後一個說話的 AI」說了算</b>。可測試的驗收標準有個方法叫 EARS（Rolls-Royce 2009），值得查。</div>
+  <div class="insight g reveal">📌 <b>AI 之間吵不出結果時怎麼辦？</b> 那不是「再叫一個 AI」的時機，是<b style="color:var(--text)">合約寫漏了</b>的訊號 → 停下來，人類把這條補進 spec.md / tasks.md、凍結它、再重來。<b>裁判權永遠在人手上</b>——這就是你前面答對的「UI 顏色沒定義在 spec.md，就由人當下裁決要不要補」。</div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">顆粒度 = 可驗證性（同一個問題的兩面）</h3>
+  <p class="lead reveal">為什麼有時候 task 寫不出好的 Acceptance/Evidence？因為 <b style="color:var(--text)">task 切得太粗</b>。「task 顆粒度」和「能不能寫出可驗證 Evidence」其實是同一個問題——<b>一條 task 能不能被一個測試釘住，就是在問它夠不夠單一明確</b>。</p>
+  <div class="stryker">
+    <div class="card survived reveal"><div class="t">✗ 顆粒太粗</div><div class="mut">- [ ] 實作折扣計算機</div><p>Evidence 只能寫「能跑就好」。因為它包了太多行為，<b>沒有單一的 pass/fail</b>。</p></div>
+    <div class="card killed reveal"><div class="t">✓ 顆粒剛好</div><div class="mut">- [ ] 標準折扣：100 打 8 折 = 80</div><p>Evidence 立刻寫得出：<code style="font-family:'JetBrains Mono';color:var(--code)">dotnet test --filter discount_standard</code>。因為它對應<b>恰好一個可驗證行為</b>。</p></div>
+  </div>
+  <div class="insight reveal">💡 判斷 task 切得對不對，有個簡單測試：<b style="color:var(--text)">試著替它寫一條 Evidence 指令</b>。寫得出 → 顆粒剛好；寫不出、只能寫形容詞 → 太粗，該再拆。</div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">怎麼確認一條 Acceptance「可被驗證」？三問 + 紅燈確認法</h3>
+  <p class="lead reveal">拿任何一條 Acceptance，問三個問題。<b>任一個答不出來，它就還不夠格當硬關卡。</b></p>
+  <div class="pipe reveal">
+    <div class="flowstep r"><div class="num">1</div><div class="body"><h4>觸發是什麼？<span class="tag cmd">對應 WHEN / IF</span></h4><p>「當輸入 100 和 20%」。答不出明確觸發 → 太模糊。</p></div></div>
+    <div class="flowstep r"><div class="num">2</div><div class="body"><h4>預期的具體結果是什麼？<span class="tag cmd">對應 THEN</span></h4><p>「回傳 80.00」。如果結果是「正確」「正常」這種形容詞、不是<b>能比對的具體值或狀態</b> → 不可驗證。</p></div></div>
+    <div class="flowstep r"><div class="num">3</div><div class="body"><h4>我能寫出一條跑完明確回傳通過/失敗的指令嗎？</h4><p>「<code style="font-family:'JetBrains Mono';color:var(--code)">dotnet test --filter discount_standard</code>」。如果發現「要人看畫面才知道」「要主觀判斷美醜」→ 它不該是硬關卡，頂多是建議。</p></div></div>
+  </div>
+  <div class="insight r reveal">🔬 <b>最殘酷也最有效的確認法：紅燈先行。</b> 先把這條 Acceptance 寫成一個會失敗的測試，跑它，<b style="color:var(--text)">看它真的紅</b>。如果你連「讓它紅」都做不到——不知道怎麼讓這條件失敗——就證明它不可驗證。<b style="color:var(--text)">一條無法失敗的標準，就是一條無法驗證的標準。</b>這跟 Stryker「把程式改壞看測試會不會紅」是同一個哲學：<b>能被否證，才是真標準。</b></div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">何時產出？何時驗證回填？</h3>
+  <div class="pipe reveal">
+    <div class="flowstep"><div class="num">A</div><div class="body"><h4>產出：<span class="tag cmd">/opsx:propose</span>（寫程式之前）</h4><p>OpenSpec 自動產生 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">tasks.md</code> 的<b>打勾骨架</b>。但 <b style="color:var(--text)">Acceptance / Evidence 不是它自動填好的</b>——要你或 AI 在這階段補上、並凍結。</p></div></div>
+    <div class="flowstep"><div class="num">B</div><div class="body"><h4>回填：<span class="tag cmd">/opsx:apply</span>（實作時）</h4><p>AI 邊做邊勾 checkbox。做完後 <span class="tag cmd">/opsx:verify</span> 做一次「自動同儕審查」，回報 CRITICAL / WARNING / SUGGESTION。</p></div></div>
+  </div>
+  <div class="insight r reveal">⚠️ <b>誠實的限制（這正是你最該警惕的）</b>：有所本地說，<code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">/opsx:verify</code> 的完成度檢查<b style="color:var(--text)">主要看「checkbox 有沒有打勾、格式對不對」</b>（用 regex 找打勾符號），<code>/opsx:archive</code> 對未完成任務也<b style="color:var(--text)">只警告、不阻擋</b>。換句話說——OpenSpec 驗的是「你<u>說</u>做完了沒」，<b>不是「你<u>真的</u>做到了沒」</b>。AI 大可把勾打滿、verify 照樣過。所以 OpenSpec 的 verify/archive 是<b style="color:var(--text)">軟關卡（建議層）</b>。</div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">怎麼確保 AI 寫的 Acceptance/Evidence「可驗證」？</h3>
+  <p class="lead reveal">一條鐵律：<b style="color:var(--text)">Evidence 必須是一條能貼進終端機跑、會回傳通過/失敗的指令</b>。把它接到 <code>dotnet test</code> / Stryker / CI——讓<b>機器</b>當裁判，而不是讓 OpenSpec 信任 checkbox。這就是把軟關卡變硬關卡的關鍵動作。</p>
+  <div class="stryker">
+    <div class="card survived reveal"><div class="t">✗ 不可驗證（AI 很愛這樣寫）</div><p><b>Acceptance:</b> 折扣計算正確、運作正常<br><br>誰來判斷「正確」「正常」？這是廢話——勾打了也沒人能反駁，等於沒關卡。</p></div>
+    <div class="card killed reveal"><div class="t">✓ 可驗證</div><div class="mut">dotnet test --filter Category=discount
+dotnet stryker  → 突變分數 ≥ 80%</div><p>機器跑、回傳碼說話。過不了 → CI 紅燈 → 合不進去。</p></div>
+  </div>
+  <div class="insight reveal">💡 <b>過濾器</b>：如果一條 Acceptance <b style="color:var(--text)">沒辦法被翻成一條會 pass/fail 的指令</b>，它就還不夠格凍結——要嘛改寫成可跑的，要嘛承認它只是建議、不該當硬關卡。這個過濾動作，最好也由獨立的人/AI 把關，因為「AI 寫的驗收標準可能本身就不可驗證」。</div>
+
+  <h3 style="font-family:'Noto Serif TC',serif;font-size:1.15rem;margin:26px 0 10px;color:var(--text);">EARS：把驗收標準寫成可測試句型</h3>
+  <p class="lead reveal">EARS（Easy Approach to Requirements Syntax，Rolls-Royce 2009）是一套寫需求的固定句型，逼你把模糊的願望寫成<b>有觸發條件、有明確反應</b>的句子——天生好轉成測試。常用五種：</p>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">EARS 句型 → 直接對應 GWT / 測試</span></div>
+<pre><span class="cm"># Ubiquitous（恆常）</span>
+The system SHALL 永遠成立的規則。
+
+<span class="cm"># Event-driven（事件觸發）→ 最常用，直接變 When/Then</span>
+<span class="st">WHEN</span> &lt;觸發&gt;, the system SHALL &lt;反應&gt;.
+
+<span class="cm"># State-driven（狀態）</span>
+<span class="st">WHILE</span> &lt;處於某狀態&gt;, the system SHALL &lt;反應&gt;.
+
+<span class="cm"># Unwanted（錯誤處理）→ 對應「拒絕負數」那條</span>
+<span class="st">IF</span> &lt;非法情況&gt;, THEN the system SHALL &lt;如何拒絕&gt;.
+
+<span class="cm"># Optional（選用功能）</span>
+<span class="st">WHERE</span> &lt;某功能啟用&gt;, the system SHALL &lt;反應&gt;.</pre>
+  </div>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">套到折扣計算機 → 每句都能驗</span></div>
+<pre><span class="cm"># Event-driven</span>
+WHEN a discount of 20% is applied to a base price of 100,
+the system SHALL return a final price of 80.00.
+<span class="cm">  ↳ Evidence: dotnet test --filter discount_standard</span>
+
+<span class="cm"># Unwanted behaviour</span>
+IF the base price is negative,
+THEN the system SHALL reject the calculation with an error.
+<span class="cm">  ↳ Evidence: dotnet test --filter discount_reject_negative</span></pre>
+  </div>
+  <div class="insight g reveal">💡 看出來了嗎？EARS 的 <b>WHEN…SHALL…</b> 幾乎<b style="color:var(--text)">逐字對應</b> OpenSpec 的 <code>WHEN / THEN</code> scenario、再對應 Reqnroll 的 <code>When / Then</code> 步驟、再對應一條 <code>dotnet test --filter</code>。從「模糊願望」到「會 pass/fail 的指令」，EARS 把這條翻譯路鋪平了。</div>
+
+  <!-- STEP 6: the cheating problem + stryker -->
+  <div class="sec-head reveal"><div class="sec-no">06</div><h2>最陰險的問題：AI 寫出「會過的假測試」</h2></div>
+  <p class="lead reveal">你最初的焦慮就在這。如果 Copilot 自己寫測試，它可能寫一個<b>恆真、或 mock 掉關鍵邏輯</b>的測試——綠燈很漂亮，但什麼都沒驗到。研究找到一個<b style="color:var(--text)">真實、確定性</b>的解法：<b style="color:var(--text)">突變測試 Stryker.NET</b>。</p>
+  <p class="lead reveal">原理：Stryker <b>故意把你的程式改壞</b>（一個個小變動，叫「突變體 mutant」），再跑你的測試。<b style="color:var(--text)">同一個突變</b>，遇到好測試會被「殺死」，遇到爛測試會「存活」——差別不在突變，在你的測試夠不夠硬。</p>
+  <div class="stryker">
+    <div class="card killed reveal">
+      <div class="t">✓ 好測試 → MUTANT KILLED</div>
+      <div class="mut">突變：price*(1<span style="color:var(--rust-soft)">-</span>pct/100) → price*(1<span style="color:var(--rust-soft)">+</span>pct/100)</div>
+      <p>測試斷言 <b>結果要等於 80.00</b>。被改壞後算出 120 ≠ 80 → <b>測試變紅</b>，突變被殺死。代表這條測試真的在盯規格。✅</p>
+    </div>
+    <div class="card survived reveal">
+      <div class="t">✗ 爛測試 → MUTANT SURVIVED</div>
+      <div class="mut">同一個突變：price*(1-pct/100) → price*(1+pct/100)</div>
+      <p>但測試只斷言 <b>結果不是 null</b>（恆真的假測試）。改壞後算出 120 仍然不是 null → <b>測試還是綠的</b>，突變存活。⚠️ 報告精準點名這條是裝飾品。</p>
+    </div>
+  </div>
+  <div class="insight r reveal">💡 這就是我們前面說的「<b>把實作改壞，測試會不會變紅？</b>」那道檢查題——Stryker 把它<b style="color:var(--text)">自動化、規模化</b>了。Microsoft Learn 提醒：別追求 100% 突變分數，聚焦高風險邏輯就好。</div>
+
+  <!-- STEP 7: traceability -->
+  <div class="sec-head reveal"><div class="sec-no">07</div><h2>可追溯鏈：從一句規格到一個綠燈</h2></div>
+  <p class="lead reveal">「確保 spec.md 被符合」最終長這樣——一條任何人都能指著看的鏈。任一環斷掉，CI 就擋住合併。</p>
+  <div class="chain reveal">
+    <div class="row">
+      <span class="node spec">spec.md：Requirement</span><span class="ar">→</span>
+      <span class="node spec">#### Scenario</span><span class="ar">→</span>
+      <span class="node">Pricing.feature</span><span class="ar">→</span>
+      <span class="node">PricingSteps.cs</span>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <span class="node">PricingService（實作）</span><span class="ar">→</span>
+      <span class="node green">dotnet test 綠燈</span><span class="ar">→</span>
+      <span class="node green">PR 綠勾 ✓</span>
+    </div>
+  </div>
+
+  <!-- STEP 8: context handoff -->
+  <div class="sec-head reveal"><div class="sec-no">08</div><h2>Agent A 的 context 快滿了怎麼辦？</h2></div>
+  <p class="lead reveal">LLM 的上下文窗有物理上限，改幾輪就會塞滿、開始「趕工收尾」（Anthropic 稱之為 context anxiety）。但在這套流程裡，<b>這個問題大半被架構化解了</b>——因為真相不在對話裡，<b style="color:var(--text)">在硬碟上</b>。</p>
+  <div class="pipe reveal">
+    <div class="flowstep r"><div class="num">✕</div><div class="body"><h4>不要做的事：在同一個塞滿的 session 裡硬撐</h4><p>上下文被前幾輪失敗方案污染後，越改越歪。Claude Code 官方建議：修正超過兩次還是錯，<b>清空重來</b>比繼續修好。</p></div></div>
+    <div class="flowstep g"><div class="num">✓</div><div class="body"><h4>該做的事：開一個全新的 Agent A，從硬碟重讀</h4><p>因為 <code style="font-family:'JetBrains Mono';background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code)">proposal.md / spec.md / tasks.md</code> 全都<b>寫在硬碟上的 markdown</b>，新 session 直接讀檔就接上了——不需要繼承舊對話的雜訊。spec 就是它的記憶。</p></div></div>
+  </div>
+  <div class="insight g reveal">💡 這正是 spec-driven 的核心好處：<b style="color:var(--text)">把記憶從「會塞滿、會遺忘的對話」搬到「不會消失的檔案」</b>。有來源直接說，這解決了長對話的「災難性遺忘」問題。tasks.md 的打勾狀態還告訴新 agent「做到哪了」，無縫接棒。</div>
+  <div class="insight reveal">📌 對應我們最早的主題：這就是 harness 的<b style="color:var(--text)">記憶層</b>。Agent context 滿不滿，不該是你的痛點——只要真相在硬碟上、且被 validate/CI 守著，換誰來接、換幾個 session 接，都跑同一份合約。</div>
+
+  <div class="takeaway reveal">
+    <div class="lab">帶走這一句</div>
+    <p>spec.md 不會自己「被符合」。<br>是你疊的<u>四道關卡</u>，讓不符合的程式<br><u>連 main 分支的門都摸不到</u>。</p>
+    <p class="small">第 1 層靠 AI 自律（不可靠）；第 2~4 層靠機器判定（可靠）。<br>Harness engineering 的判斷力，就是知道哪一條該交給機器、哪一條只能靠人看。🌱</p>
+  </div>
+
+  <div class="sources reveal">
+    <h4>// 有所本（主要來源）</h4>
+    <ul>
+      <li>OpenSpec — <code>github.com/Fission-AI/OpenSpec</code>（spec.md 格式、<code>validate --strict</code>、Given/When/Then 語法）</li>
+      <li>Reqnroll v1.0（2024-02-08，SpecFlow 的維護後繼者；SpecFlow 末版停在 2022）— <code>docs.reqnroll.net</code></li>
+      <li>GitHub Copilot 自訂指令與「非確定性」聲明 — GitHub Docs</li>
+      <li>Stryker.NET 突變測試 — Microsoft Learn「Mutation testing - .NET」</li>
+      <li>WinForms 可測試架構 MVP / Passive View — MSDN Magazine 2006</li>
+      <li>Red→Green→Refactor — Kent Beck《TDD by Example》2003</li>
+      <li><code>tasks.md</code> 打勾清單 + Acceptance/Evidence 寫法 — OpenSpec docs/concepts.md、spec-coding.dev（2026）</li>
+      <li>可測試驗收標準 EARS（Easy Approach to Requirements Syntax）— Rolls-Royce 2009</li>
+      <li><code>/opsx:verify</code> 主要檢查 checkbox 格式、<code>/opsx:archive</code> 對未完成只警告不阻擋（軟關卡）— OpenSpec DeepWiki（opsx:apply / opsx:verify，2026-03）</li>
+      <li>「全新 context 從硬碟重讀 spec」解決長對話遺忘 — danclarke.com、redreamality.com（2026）；修正逾兩次清空重來 — Claude Code 官方最佳實踐</li>
+    </ul>
+  </div>
+
+  <footer>
+    <div class="line"></div>
+    spec.md → validate → tasks.md(合約) → .feature(GWT) → 紅燈 → 實作 → 綠燈 → Stryker 驗測試 → CI 擋門<br>
+    context 滿了就從硬碟重讀，spec 是記憶 · 內容均有所本，無法查證處已標示
+  </footer>
+</div>
+<script>
+  const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target);}});},{threshold:.1});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

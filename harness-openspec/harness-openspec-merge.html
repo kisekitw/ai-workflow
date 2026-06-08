@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<title>融合方案：learn-harness × OpenSpec（C# WinForms）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1b1510; --surface:#27201a; --surface2:#322820;
+    --text:#f4ead7; --text-soft:#cdbda0;
+    --rust:#ee7d4d; --rust-soft:#f4a07a; --gold:#f3bb60;
+    --green:#9ccb6f; --green-deep:#7fae53; --red:#f28a78; --blue:#7fb4e0;
+    --line:#473a2c; --code:#d7e8b8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;background:#1b1510;}
+  body{background-color:var(--bg);background-image:radial-gradient(circle at 12% 5%,rgba(238,125,77,.10),transparent 42%),radial-gradient(circle at 88% 95%,rgba(127,180,224,.07),transparent 42%);color:var(--text);font-family:'Noto Sans TC',sans-serif;line-height:1.75;overflow-x:hidden;}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px;position:relative;}
+
+  header{padding:70px 0 38px;text-align:center;}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:22px;}
+  h1{font-family:'Noto Serif TC',serif;font-weight:900;line-height:1.2;font-size:clamp(1.8rem,5vw,3rem);letter-spacing:-.01em;}
+  h1 .em{color:var(--rust);position:relative;white-space:nowrap;}
+  h1 .em::after{content:"";position:absolute;left:-1%;right:-1%;bottom:.02em;height:3px;background:var(--gold);border-radius:2px;}
+  .sub{margin:24px auto 0;max-width:680px;font-size:clamp(.96rem,2.2vw,1.12rem);color:var(--text-soft);}
+  .pill{display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:24px;}
+  .pill span{font-family:'JetBrains Mono',monospace;font-size:.72rem;background:var(--surface2);border:1px solid var(--line);color:var(--text);padding:6px 13px;border-radius:99px;}
+
+  .framing{margin:20px 0 54px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:32px 30px;}
+  .framing .lab{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.28em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;}
+  .framing p{font-family:'Noto Serif TC',serif;font-size:clamp(1.08rem,2.8vw,1.38rem);line-height:1.6;}
+  .framing .hl{color:var(--gold);font-weight:700;}
+
+  .sec-head{display:flex;align-items:center;gap:15px;margin:60px 0 22px;}
+  .sec-no{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.05rem;color:#1b1510;background:var(--rust);width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;border-radius:11px;}
+  .sec-head h2{font-family:'Noto Serif TC',serif;font-size:clamp(1.3rem,3.4vw,1.8rem);font-weight:700;line-height:1.25;}
+  .lead{color:var(--text-soft);margin-bottom:6px;}
+  .lead b{color:var(--text);}
+  h3{font-family:'Noto Serif TC',serif;font-size:1.12rem;margin:24px 0 10px;color:var(--text);}
+
+  /* two-repo cards */
+  .repos{display:flex;gap:16px;flex-wrap:wrap;}
+  .repo{flex:1;min-width:280px;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:24px;border-top-width:4px;}
+  .repo.lh{border-top-color:var(--blue);}
+  .repo.os{border-top-color:var(--gold);}
+  .repo .nm{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;margin-bottom:4px;}
+  .repo.lh .nm{color:var(--blue);}
+  .repo.os .nm{color:var(--gold);}
+  .repo .role{font-size:1.05rem;font-weight:700;margin-bottom:10px;}
+  .repo ul{list-style:none;font-size:.9rem;color:var(--text-soft);}
+  .repo li{padding:3px 0 3px 18px;position:relative;}
+  .repo li::before{content:"▪";position:absolute;left:0;color:var(--rust);}
+  .repo li code{font-family:'JetBrains Mono',monospace;font-size:.85em;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code);}
+
+  /* overlap/complement/conflict table */
+  .cmp{display:grid;gap:12px;margin-top:16px;}
+  .cmprow{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:16px 18px;border-left-width:5px;}
+  .cmprow.over{border-left-color:var(--red);}
+  .cmprow.comp{border-left-color:var(--green);}
+  .cmprow.gap{border-left-color:var(--gold);}
+  .cmprow .vt{font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:99px;margin-bottom:7px;display:inline-block;}
+  .over .vt{background:rgba(242,138,120,.18);color:var(--red);}
+  .comp .vt{background:rgba(156,203,111,.2);color:var(--green);}
+  .gap .vt{background:rgba(243,187,96,.18);color:var(--gold);}
+  .cmprow h4{font-size:1rem;margin-bottom:5px;}
+  .cmprow p{font-size:.88rem;color:var(--text-soft);}
+  .cmprow code{font-family:'JetBrains Mono',monospace;font-size:.84em;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code);}
+
+  /* decision: one router one list one gate */
+  .three{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;}
+  .three .c{flex:1;min-width:240px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:22px;}
+  .three .n{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--gold);font-weight:700;letter-spacing:.1em;margin-bottom:8px;}
+  .three h4{font-size:1.05rem;margin-bottom:6px;}
+  .three p{font-size:.9rem;color:var(--text-soft);}
+  .three b{color:var(--text);}
+  .three code{font-family:'JetBrains Mono',monospace;font-size:.84em;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code);}
+
+  /* code */
+  .code{background:#15110c;border:1px solid var(--line);border-radius:12px;margin:14px 0;overflow:hidden;}
+  .code .bar{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);border-bottom:1px solid var(--line);}
+  .code .bar .fn{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-soft);}
+  .code .bar .dot{width:9px;height:9px;border-radius:50%;}
+  .code pre{margin:0;padding:15px 17px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.62;color:var(--code);white-space:pre;}
+  .code .cm{color:#8a9a6a;} .code .kw{color:var(--rust-soft);} .code .st{color:var(--gold);} .code .hi{color:var(--text);background:rgba(243,187,96,.12);}
+
+  /* lifecycle flow */
+  .pipe{background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:26px 22px;margin-top:16px;}
+  .flowstep{display:flex;gap:15px;align-items:flex-start;position:relative;padding-bottom:22px;}
+  .flowstep:last-child{padding-bottom:0;}
+  .flowstep:not(:last-child)::before{content:"";position:absolute;left:19px;top:42px;bottom:-4px;width:2px;background:repeating-linear-gradient(var(--line) 0 6px,transparent 6px 12px);}
+  .flowstep .num{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:var(--surface2);border:2px solid var(--text-soft);color:var(--text);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace;z-index:1;font-size:.85rem;}
+  .flowstep.hard .num{background:var(--green);border-color:var(--green);color:#1b1510;}
+  .flowstep.soft .num{background:var(--surface2);border-color:var(--red);color:var(--red);}
+  .flowstep .body h4{font-size:1.04rem;margin-bottom:4px;}
+  .flowstep .body p{font-size:.9rem;color:var(--text-soft);}
+  .flowstep .body b{color:var(--text);}
+  .flowstep .body code{font-family:'JetBrains Mono',monospace;font-size:.84em;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code);}
+  .gatetag{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:7px;vertical-align:middle;}
+  .gatetag.h{background:rgba(156,203,111,.2);color:var(--green);}
+  .gatetag.s{background:rgba(242,138,120,.18);color:var(--red);}
+
+  .insight{background:var(--surface);border:1.5px dashed var(--gold);border-radius:12px;padding:16px 20px;margin-top:14px;font-size:.94rem;}
+  .insight.g{border-color:var(--green);} .insight.r{border-color:var(--red);} .insight.b{border-color:var(--blue);}
+  .insight b{color:var(--gold);} .insight.g b{color:var(--green);} .insight.r b{color:var(--red);} .insight.b b{color:var(--blue);}
+  .insight code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--code);font-size:.86em;}
+
+  .takeaway{margin:62px 0 24px;background:linear-gradient(135deg,#c2502a,#9c3c1d);border-radius:18px;padding:40px 34px;color:#fdf3e6;text-align:center;position:relative;overflow:hidden;}
+  .takeaway::after{content:"🐎";position:absolute;bottom:-12px;right:16px;font-size:5rem;opacity:.15;}
+  .takeaway .lab{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-bottom:16px;}
+  .takeaway p{font-family:'Noto Serif TC',serif;font-size:clamp(1.12rem,3vw,1.5rem);line-height:1.55;font-weight:600;}
+  .takeaway u{text-decoration-color:#f3bb60;text-underline-offset:4px;}
+  .takeaway .small{font-family:'Noto Sans TC';font-size:.92rem;font-weight:400;margin-top:18px;opacity:.92;line-height:1.7;}
+
+  .sources{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-top:28px;}
+  .sources h4{font-size:.92rem;color:var(--gold);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em;}
+  .sources ul{list-style:none;font-size:.8rem;color:var(--text-soft);}
+  .sources li{padding:3px 0 3px 16px;position:relative;}
+  .sources li::before{content:"▪";position:absolute;left:0;color:var(--rust);}
+  .sources code{font-family:'JetBrains Mono',monospace;font-size:.85em;color:var(--code);}
+  .sources .warn{color:var(--gold);}
+
+  footer{text-align:center;padding:24px 0 58px;color:var(--text-soft);font-size:.78rem;font-family:'JetBrains Mono',monospace;}
+  footer .line{width:48px;height:2px;background:var(--line);margin:0 auto 16px;}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .65s,transform .65s;}
+  .reveal.show{opacity:1;transform:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">融合設計 · learn-harness × OpenSpec</div>
+    <h1>兩套流程，<span class="em">無縫接成一套</span></h1>
+    <p class="sub">learn-harness-engineering 給「執行控制層」，OpenSpec 給「規格層」。它們只在一個地方重疊，補上彼此都缺的硬關卡，就能合成一條從規格到綠燈、擋得住的流水線。範例：C# WinForms 折扣計算機。</p>
+    <div class="pill"><span>OpenSpec</span><span>learn-harness</span><span>GitHub Copilot</span><span>Husky.NET</span><span>Reqnroll</span><span>Stryker.NET</span></div>
+  </header>
+
+  <section class="framing reveal">
+    <div class="lab">一句話設計原則</div>
+    <p>兩套流程<span class="hl">互補，不重複</span>。融合的關鍵動作只有三個：<span class="hl">一個 router、一份清單、一道硬關卡</span>。</p>
+  </section>
+
+  <!-- 01 what each brings -->
+  <div class="sec-head reveal"><div class="sec-no">01</div><h2>調研結論：誰帶來什麼</h2></div>
+  <p class="lead reveal">先看兩邊各自的真實角色（基於 repo 實際內容）。一個偏 infra/執行，一個偏規格/需求。</p>
+  <div class="repos">
+    <div class="repo lh reveal">
+      <div class="nm">walkinglabs/learn-harness-engineering</div>
+      <div class="role">執行控制層（偏 infra）</div>
+      <ul>
+        <li><code>init.sh</code>：把 install / check / test / build 裝進一支腳本（真實的機械檢查包）</li>
+        <li><code>feature_list.json</code>：機器可讀的功能清單 + 狀態（not_started→active→passing）</li>
+        <li><code>AGENTS.md</code>：router，每次 session 先讀它</li>
+        <li>session 生命週期：progress.md、session-handoff、clean-state checklist</li>
+        <li>五子系統：指令 / 狀態 / 驗證 / 範圍 / 生命週期</li>
+      </ul>
+    </div>
+    <div class="repo os reveal">
+      <div class="nm">Fission-AI/OpenSpec</div>
+      <div class="role">規格層（偏需求）</div>
+      <ul>
+        <li>artifact 圖：<code>proposal.md → spec.md → design.md → tasks.md</code></li>
+        <li><code>spec.md</code>：<code>### Requirement: SHALL…</code> + <code>#### Scenario:</code>（GIVEN/WHEN/THEN）</li>
+        <li><code>openspec validate --strict</code>：規格<b>結構</b>的硬關卡（沒 scenario 就報錯）</li>
+        <li>生命週期：<code>/opsx:propose → apply → verify → archive</code></li>
+        <li><code>openspec init --tools github-copilot</code> 產生 <code>.github/prompts/</code> slash 指令</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 02 overlap / complement / conflict -->
+  <div class="sec-head reveal"><div class="sec-no">02</div><h2>重疊、互補、衝突</h2></div>
+  <p class="lead reveal">把元素逐一對齊，會發現它們<b>只在一個地方真正重疊</b>，其餘多是互補，還有一個兩邊都缺的洞。</p>
+  <div class="cmp">
+    <div class="cmprow over reveal"><span class="vt">重疊（同一件事，兩種格式）</span><h4><code>feature_list.json</code> ＝ <code>tasks.md</code></h4><p>兩者都是「被追蹤的清單 / 進度狀態 / 完成定義」。直接並用會讓 agent 不知道看哪個 → 狀態漂移。<b style="color:var(--text)">必須二選一。</b></p></div>
+    <div class="cmprow over reveal"><span class="vt">重疊</span><h4>兩個 <code>AGENTS.md</code> router</h4><p>兩邊都堅持「agent 先讀 AGENTS.md」。OpenSpec 自己也會產生一份。<b style="color:var(--text)">內容要合併，不能各擺一份。</b></p></div>
+    <div class="cmprow comp reveal"><span class="vt">互補（OpenSpec 補洞）</span><h4>真正的規格層</h4><p>learn-harness 只有「每功能一條 verification 指令」，<b>沒有 SHALL / GWT scenario</b>。OpenSpec 補上可讀又可驗的需求。</p></div>
+    <div class="cmprow comp reveal"><span class="vt">互補（learn-harness 補洞）</span><h4>機械化 compile/test 包</h4><p>OpenSpec 的 <code>validate</code> 只查 markdown、<code>verify</code> 是 LLM 判斷，<b>都不跑真實程式</b>。<code>init.sh</code> 補上真的會編譯、會跑測試的那層。</p></div>
+    <div class="cmprow gap reveal"><span class="vt">兩邊都缺的洞 ⚠️</span><h4>硬 / 確定性約束層（git hook、CI）</h4><p>更關鍵的是——<b style="color:var(--text)">兩邊原生都是軟關卡</b>。<code>init.sh</code> 靠 agent 自己願意跑、<code>/opsx:verify</code> 只查 checkbox、<code>archive</code> 對未完成只警告不擋。<b style="color:var(--text)">必須補一道 agent 繞不過的硬關卡。</b></p></div>
+  </div>
+
+  <!-- 03 the design: one router one list one gate -->
+  <div class="sec-head reveal"><div class="sec-no">03</div><h2>融合設計：一個 router、一份清單、一道硬關卡</h2></div>
+  <div class="three">
+    <div class="c reveal"><div class="n">RESOLVE 重疊 #1</div><h4>一份清單</h4><p>退役 <code>feature_list.json</code>，<b>tasks.md 當唯一清單</b>。原本三個欄位各有去處：意圖→spec.md 的 Requirement；verification→Reqnroll scenario→一條 <code>dotnet test --filter</code>；狀態→tasks.md 的 checkbox。</p></div>
+    <div class="c reveal"><div class="n">RESOLVE 重疊 #2</div><h4>一個 router</h4><p>留<b>一份 AGENTS.md</b>（OpenSpec 擁有、會重生），把「本機 init.sh / Husky 指令」寫進 <code>openspec/config.yaml</code> 的 <code>context:</code>，讓重生時保留。</p></div>
+    <div class="c reveal"><div class="n">FILL 那個洞</div><h4>一道硬關卡</h4><p><b>Husky.NET pre-commit</b>：commit 前強制跑 <code>openspec validate --strict</code> + <code>dotnet format</code> + <code>dotnet test</code>，沒過就擋。CI 再鏡射一次。這是兩邊都缺、最重要的一步。</p></div>
+  </div>
+  <div class="insight b reveal">💡 為什麼 Husky.NET 能補洞？因為它綁在 <b>git commit 事件</b>上，不靠 agent 自律——這正是 <code>init.sh</code>「希望 agent 會跑」做不到的。<b style="color:var(--text)">同樣的檢查，從「建議」升級成「約束」。</b></div>
+
+  <!-- 04 the merged file tree -->
+  <div class="sec-head reveal"><div class="sec-no">04</div><h2>融合後的專案長相</h2></div>
+  <div class="code reveal">
+    <div class="bar"><span class="dot" style="background:#e0625a"></span><span class="dot" style="background:#e8b24a"></span><span class="dot" style="background:#7fae53"></span><span class="fn">DiscountCalculator/ （C# WinForms 折扣計算機）</span></div>
+<pre><span class="cm"># 規格層（OpenSpec 擁有，唯一真相）</span>
+openspec/
+├── specs/pricing/spec.md          <span class="cm"># 已建成：SHALL + GWT</span>
+├── changes/add-price-calculator/
+│   ├── proposal.md  design.md
+│   └── tasks.md                   <span class="hi"># 唯一清單（feature_list.json 已退役）</span>
+└── config.yaml                    <span class="cm"># context: 注入 init/Husky 規則</span>
+
+<span class="cm"># 執行 / 約束層</span>
+AGENTS.md                          <span class="cm"># 唯一 router</span>
+.husky/task-runner.json            <span class="hi"># 硬關卡：commit 前強制跑</span>
+scripts/dev-bootstrap.sh           <span class="cm"># 原 init.sh，降為非權威</span>
+.github/prompts/*.prompt.md        <span class="cm"># OpenSpec 產生的 Copilot 指令</span>
+
+<span class="cm"># 程式 + 測試</span>
+src/Pricing/PricingService.cs      <span class="cm"># 純邏輯，不碰 WinForms（MVP）</span>
+src/UI/MainForm.cs                 <span class="cm"># Passive View，只顯示</span>
+tests/Pricing.Tests/Features/Pricing.feature   <span class="cm"># Reqnroll GWT</span></pre>
+  </div>
+  <div class="insight g reveal">📌 一眼看出融合點：<b style="color:var(--text)">規格在 openspec/、清單只剩 tasks.md、router 只剩一個 AGENTS.md、硬關卡在 .husky/</b>。原本 learn-harness 的 init.sh 沒消失，只是從「權威」降為「Husky 會去呼叫的腳本」。</div>
+
+  <!-- 05 the merged lifecycle -->
+  <div class="sec-head reveal"><div class="sec-no">05</div><h2>融合後的完整生命週期（軟/硬關卡標示）</h2></div>
+  <p class="lead reveal">綠＝硬關卡（機器擋得住）；紅圈＝軟關卡（只警告，靠後面的硬關卡兜底）。</p>
+  <div class="pipe reveal">
+    <div class="flowstep soft"><div class="num">1</div><div class="body"><h4>Copilot 打 <code>/opsx:propose add-price-calculator</code><span class="gatetag s">軟</span></h4><p>產生 proposal/design/tasks/spec.md。spec.md 用 <b>EARS + GWT</b>，tasks.md 一個 scenario 一個 checkbox。</p></div></div>
+    <div class="flowstep hard"><div class="num">2</div><div class="body"><h4><code>openspec validate --strict</code><span class="gatetag h">硬</span></h4><p>規格<b>結構</b>沒 scenario 就報錯、回傳非零。注意：它只查結構，不查行為。</p></div></div>
+    <div class="flowstep hard"><div class="num">3</div><div class="body"><h4>加 Reqnroll <code>.feature</code>，先看紅燈<span class="gatetag h">硬</span></h4><p>每個 Scenario 鏡射成測試，實作前先跑 → <b>紅燈</b>（Kent Beck 紅燈先行）。</p></div></div>
+    <div class="flowstep soft"><div class="num">4</div><div class="body"><h4><code>/opsx:apply</code> 邊做邊勾 checkbox<span class="gatetag s">軟</span></h4><p>只有對應 <code>dotnet test --filter</code> 綠了才把 <code>[ ]</code> 打成 <code>[x]</code>。</p></div></div>
+    <div class="flowstep hard"><div class="num">5</div><div class="body"><h4>git commit → Husky.NET pre-commit<span class="gatetag h">硬</span></h4><p>強制跑 format + <code>validate --strict</code> + <code>dotnet test</code>。<b>失敗就擋下 commit，agent 根本送不出壞東西。</b>這是整條線的命門。</p></div></div>
+    <div class="flowstep soft"><div class="num">6</div><div class="body"><h4><code>/opsx:verify</code> 報完成度<span class="gatetag s">軟</span></h4><p>LLM 審查（主要看 checkbox），給人類參考。真正的失敗早在第 5 步被擋掉了。</p></div></div>
+    <div class="flowstep soft"><div class="num">7</div><div class="body"><h4><code>/opsx:archive</code> 併入 specs/<span class="gatetag s">軟</span></h4><p>把 delta 合進 <code>openspec/specs/</code>。對未完成只警告——但有第 5 步兜底，無妨。</p></div></div>
+    <div class="flowstep hard"><div class="num">8</div><div class="body"><h4>定期 <code>dotnet stryker</code><span class="gatetag h">硬</span></h4><p>突變測試當「否證器」。存活的突變＝你漏寫的 scenario → 回頭發一個新的 <code>/opsx:propose</code>，讓規格層吸收。</p></div></div>
+  </div>
+  <div class="insight r reveal">🔬 第 8 步收束整個哲學：<b style="color:var(--text)">存活的突變，就是「你無法讓它失敗」的標準</b>——也就是漏掉的需求。把它當成新 scenario 補回 spec.md，而不是隨手加個測試。能被否證，才是真標準。</div>
+
+  <!-- 06 worked spec example -->
+  <div class="sec-head reveal"><div class="sec-no">06</div><h2>範例：折扣計算機的規格（EARS + GWT）</h2></div>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">openspec/changes/add-price-calculator/specs/pricing/spec.md</span></div>
+<pre><span class="cm">## ADDED Requirements</span>
+
+<span class="kw">### Requirement: Discount calculation</span>
+<span class="cm"># EARS：Event-driven + Unwanted behaviour</span>
+WHEN a discount is applied to a positive base price,
+the system <span class="hi">SHALL</span> return a non-negative final price.
+IF the base price is negative, THEN the system
+<span class="hi">SHALL</span> reject the calculation with an error.
+
+<span class="kw">#### Scenario: Standard discount</span>
+- <span class="st">GIVEN</span> a base price of 100.00
+- <span class="st">WHEN</span> a discount of 20 percent is applied
+- <span class="st">THEN</span> the final price is 80.00
+
+<span class="kw">#### Scenario: Reject negative price</span>
+- <span class="st">GIVEN</span> a base price of -5.00
+- <span class="st">WHEN</span> a discount of 10 percent is applied
+- <span class="st">THEN</span> the calculation is rejected with an error</pre>
+  </div>
+  <div class="code reveal">
+    <div class="bar"><span class="fn">.husky/task-runner.json （硬關卡：commit 前強制）</span></div>
+<pre>{
+  <span class="st">"tasks"</span>: [
+    { <span class="st">"group"</span>:<span class="st">"pre-commit"</span>, <span class="st">"command"</span>:<span class="st">"dotnet"</span>,
+      <span class="st">"args"</span>:[<span class="st">"format"</span>,<span class="st">"--verify-no-changes"</span>] },
+    { <span class="st">"group"</span>:<span class="st">"pre-commit"</span>, <span class="st">"command"</span>:<span class="st">"openspec"</span>,
+      <span class="st">"args"</span>:[<span class="st">"validate"</span>,<span class="st">"--changes"</span>,<span class="st">"--strict"</span>] },
+    { <span class="st">"group"</span>:<span class="st">"pre-commit"</span>, <span class="st">"command"</span>:<span class="st">"dotnet"</span>,
+      <span class="st">"args"</span>:[<span class="st">"test"</span>,<span class="st">"--no-restore"</span>] }
+  ]
+}
+<span class="cm"># 任一非零退出 → commit 被中止</span></pre>
+  </div>
+
+  <div class="takeaway reveal">
+    <div class="lab">帶走這一句</div>
+    <p>OpenSpec 給<u>規格</u>，learn-harness 給<u>執行</u>，<br>但兩邊都只是軟關卡。<br>真正讓它成立的，是你補的那道<u>commit 前硬關卡</u>。</p>
+    <p class="small">一個 router、一份清單、一道硬關卡。<br>融合不是把兩套疊在一起，是<b>消除重疊、補上彼此的洞</b>。🌱</p>
+  </div>
+
+  <div class="sources reveal">
+    <h4>// 有所本（主要來源）</h4>
+    <ul>
+      <li>learn-harness 五子系統、session 生命週期、feature_list 狀態機 — walkinglabs/learn-harness-engineering README + Lecture 08</li>
+      <li>OpenSpec artifact 圖、validate --strict、verify/archive 為軟關卡 — Fission-AI/OpenSpec docs + DeepWiki</li>
+      <li>Husky.NET pre-commit 強制執行、非零即擋 — alirezanet/Husky.Net docs、Code4IT</li>
+      <li>EARS 五句型 — Mavin et al. Rolls-Royce 2009；Reqnroll（SpecFlow 後繼）、Stryker.NET — 各官方 repo / Microsoft Learn</li>
+      <li class="warn">⚠️ 限制：feature_list.json 在 repo 內有兩種欄位版本（Lecture 用 state/behavior，schema 用 status/dependencies）；部分模板原始檔無法逐字取得，欄位以 README/Lecture/DeepWiki 為準。實作前建議 git clone 確認。</li>
+    </ul>
+  </div>
+
+  <footer>
+    <div class="line"></div>
+    融合方案：退役 feature_list.json → tasks.md 為唯一清單 → 一個 AGENTS.md router → Husky.NET 硬關卡兜底<br>
+    內容均有所本，無法逐字查證處已於來源區標示
+  </footer>
+</div>
+<script>
+  const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('show');io.unobserve(e.target);}});},{threshold:.1});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
