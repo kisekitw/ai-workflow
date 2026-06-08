@@ -1,7 +1,0 @@
-title: Legacy C# AI Workflow Reports
-description: Phase 0 Archaeology Reports — Codebase 考古分析報告
-theme: null
-include:
-  - "*.html"
-exclude:
-  - "*.md"
